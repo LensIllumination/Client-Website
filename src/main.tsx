@@ -5,6 +5,7 @@ import Home from './Home.tsx'
 import Contact from './Contact.tsx'
 import PublicAlbums from './PublicAlbums.tsx'
 import Navbar from './components/Navbar.tsx'
+import Footer from './components/Footer.tsx'
 import AdminDashboard from './AdminDashboard.tsx'
 import AdminSignIn from './AdminSignIn.tsx'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
@@ -23,6 +24,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/signin" element={<AdminSignIn />} />
       </Routes>
+      <Footer />
     </BrowserRouter>
 
     <Toaster />

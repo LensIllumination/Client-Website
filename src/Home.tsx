@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { auth, db } from "@/firebase";
-import { onAuthStateChanged } from "firebase/auth";
-import type { User } from "firebase/auth";
+import { Card } from "@/components/ui/card";
+import { db } from "@/firebase";
 import { useNavigate } from "react-router-dom";
-import { Settings, ArrowRight, Image as ImageIcon } from "lucide-react";
+import { ArrowRight, Image as ImageIcon } from "lucide-react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 
 type PublicAlbum = {
@@ -15,19 +14,10 @@ type PublicAlbum = {
 };
 
 function Home() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
   const [loadingAlbums, setLoadingAlbums] = useState(true);
   const [albums, setAlbums] = useState<PublicAlbum[]>([]);
+  const albumsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoadingAuth(false);
-    });
-    return () => unsubscribe();
-  }, []);
 
   useEffect(() => {
     const fetchPublicAlbums = async () => {
@@ -56,49 +46,66 @@ function Home() {
     fetchPublicAlbums();
   }, []);
 
-  const heroCta = useMemo(() => (
-    <div className="flex flex-wrap gap-3 justify-center">
-      <Button
-        size="lg"
-        variant="outline"
-        onClick={() => navigate("/contact")}
-      >
-        Contact Us
-      </Button>
-      {!loadingAuth && user && (
+  const heroCta = useMemo(() => {
+    const scrollToAlbums = () => {
+      albumsRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+    return (
+      <div className="flex justify-center gap-2 flex-wrap">
         <Button
           size="lg"
-          variant="outline"
-          onClick={() => navigate("/admin")}
-          className="gap-2 dark:text-foreground text-slate-900 dark:border-border border-slate-900/20"
+          variant="secondary"
+          onClick={scrollToAlbums}
         >
-          <Settings className="h-4 w-4" />
-          Admin Dashboard
+          View Albums
+          <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
-      )}
-    </div>
-  ), [albums, navigate, loadingAuth, user]);
+        <Button
+          size="lg"
+          variant="secondary"
+          onClick={() => navigate("/contact")}
+        >
+          Contact Me
+        </Button>
+      </div>
+    );
+  }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 text-foreground">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        {/* Hero */}
-        <header className="pt-16 sm:pt-20 pb-12 text-center space-y-6">
-          <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 dark:text-white leading-tight">
-            Illuminate your stories with effortless album sharing.
-          </h1>
-          <p className="text-base sm:text-lg text-slate-700 dark:text-slate-200/80 max-w-3xl mx-auto">
-            Curate, protect, and share your photography albums. Manage private client sets or showcase public galleries—all from one streamlined admin.
-          </p>
-          {heroCta}
-        </header>
+    <main className="min-h-screen bg-background">
+      {/* Hero Image Section */}
+      <div className="mx-auto max-w-7xl px-4 mb-4">
+        <div className="relative w-full h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-2xl">
+          <img
+            src="https://picsum.photos/seed/hero/1920/1080"
+            alt="Hero"
+            className="w-full h-full object-cover"
+          />
+          
+          {/* Overlay with Hero Text */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-6 md:p-8">
+            <div className="text-center mb-4">
+              <h1 className="text-3xl md:text-5xl font-bold text-white drop-shadow-lg">
+                My photography, beautifully presented.
+              </h1>
+              <p className="mt-3 text-white/90 text-lg drop-shadow">
+                Welcome to my photography portfolio. Explore my latest work, browse albums, and get in touch to discuss your project.
+              </p>
+            </div>
+            
+            {heroCta}
+          </div>
+        </div>
+      </div>
 
+      {/* Featured Albums Section */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16" ref={albumsRef}>
         {/* Public Albums */}
-        <section className="pt-24 space-y-8">
+        <section className="space-y-8">
           <div className="text-center space-y-4 flex flex-col items-center">
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Explore Public Albums</h2>
-            <p className="text-base text-slate-700 dark:text-slate-300/80 max-w-2xl mx-auto">
-              Browse our collection of shared photography albums.
+            <h2 className="text-3xl font-bold">Latest Albums</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Check out my latest photography albums and projects.
             </p>
             <Button
               size="lg"
@@ -111,37 +118,39 @@ function Home() {
           </div>
 
           {loadingAlbums ? (
-            <div className="text-center py-10 text-slate-600 dark:text-slate-300/80">Loading public albums…</div>
+            <div className="text-center py-10 text-muted-foreground">Loading public albums…</div>
           ) : albums.length === 0 ? (
-            <div className="text-center py-10 text-slate-600 dark:text-slate-300/80">No public albums yet. Check back soon!</div>
+            <div className="text-center py-10 text-muted-foreground">No public albums yet. Check back soon!</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {albums.slice(0, 3).map((album) => (
-                <div
+                <Card
                   key={album.id}
-                  className="rounded-xl border border-border bg-white shadow-lg dark:bg-white/5 dark:border-white/5 backdrop-blur hover:-translate-y-1 transition-transform p-4 flex flex-col gap-3 cursor-pointer"
+                  className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden flex flex-col"
                   onClick={() => navigate(`/album/${album.id}`)}
                 >
-                  <div className="aspect-video rounded-lg bg-gradient-to-br from-slate-200 to-slate-100 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-200">
-                    <ImageIcon className="h-10 w-10 opacity-70" />
+                  <div className="aspect-video bg-muted flex items-center justify-center">
+                    <ImageIcon className="h-10 w-10 text-muted-foreground" />
                   </div>
-                  <div>
-                    <p className="font-semibold text-slate-900 dark:text-white truncate">{album.name}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-300/70">{album.imagesCount} image(s)</p>
+                  <div className="p-4 flex flex-col gap-3 flex-1">
+                    <div>
+                      <p className="font-semibold truncate">{album.name}</p>
+                      <p className="text-sm text-muted-foreground">{album.imagesCount} image(s)</p>
+                    </div>
+                    <Button size="sm" variant="secondary" onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/album/${album.id}`);
+                    }} className="w-full mt-auto">
+                      View Album
+                    </Button>
                   </div>
-                  <Button size="sm" variant="secondary" onClick={(e) => {
-                    e.stopPropagation();
-                    navigate(`/album/${album.id}`);
-                  }} className="w-full">
-                    View Album
-                  </Button>
-                </div>
+                </Card>
               ))}
             </div>
           )}
         </section>
       </div>
-    </div>
+    </main>
   );
 }
 
