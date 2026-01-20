@@ -222,7 +222,7 @@ export function AlbumView() {
 
       <div className="mx-auto max-w-7xl px-4">
         {/* CSS Masonry Grid using Tailwind columns */}
-        <div className="columns-1 gap-4 sm:columns-2 md:columns-3 lg:columns-4">
+        <div className="columns-2 gap-4 sm:columns-2 md:columns-3 lg:columns-4">
           {album.images.map((img) => {
             const height = getImageHeight(img.id);
             return (
