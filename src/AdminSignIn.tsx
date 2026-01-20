@@ -84,14 +84,14 @@ export default function AdminSignIn() {
 
   if (loading) {
     return (
-      <div className="w-screen h-screen flex items-center justify-center">
+      <div className="min-h-screen w-full flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="w-screen h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen w-full flex items-center justify-center p-4">
       <Card className="w-full max-w-sm sm:max-w-lg shadow-lg border-muted-foreground/10">
         <CardHeader className="space-y-2 sm:space-y-1">
           <CardTitle className="text-xl sm:text-2xl flex items-center gap-2">

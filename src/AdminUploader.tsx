@@ -186,7 +186,7 @@ export default function AdminUploader() {
   };
 
   return (
-    <div className="w-screen h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen w-full flex items-center justify-center p-4">
       {loading ? (
         <Card className="w-full max-w-lg shadow-lg border-muted-foreground/10">
           <CardContent className="py-12 flex items-center justify-center">

@@ -9,9 +9,11 @@ import type { User } from "firebase/auth";
 import { X, Settings, Download, Share2, Copy } from "lucide-react";
 import JSZip from "jszip";
 import { toast } from "sonner";
+import ImageErrorPanel from "@/components/ImageErrorPanel";
 
 interface Album {
   name: string;
+  heroImage?: { id: string; src: string; fullSrc: string; title: string } | null;
   images: Array<{ id: string; src: string; fullSrc: string; title: string }>;
 }
 
@@ -21,6 +23,7 @@ export function AlbumView() {
   const [error, setError] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<{ src: string; fullSrc: string; title: string } | null>(null);
+  const [fullscreenLoadError, setFullscreenLoadError] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [imageSizes, setImageSizes] = useState<Map<string, string>>(new Map());
   const navigate = useNavigate();
@@ -65,6 +68,11 @@ export function AlbumView() {
     });
   }, [albumId]);
 
+  useEffect(() => {
+    // Reset error when a new image is opened in fullscreen
+    setFullscreenLoadError(false);
+  }, [fullscreenImage]);
+
   const handleShareAlbum = async () => {
     if (!albumId || !album) return;
     const url = `${window.location.origin}/album/${albumId}`;
@@ -92,9 +100,34 @@ export function AlbumView() {
     }
   };
 
+  const isB2QuotaError = (status: number, errorText: string): boolean => {
+    if (status === 403) {
+      const lowerError = (errorText || "").toLowerCase();
+      return (
+        lowerError.includes("quota") ||
+        lowerError.includes("limit") ||
+        lowerError.includes("bandwidth") ||
+        lowerError.includes("account_cap_exceeded") ||
+        lowerError.includes("service_unavailable")
+      );
+    }
+    return false;
+  };
+
   const forceDownload = async (url: string, filename: string) => {
+    let notified = false;
     try {
       const res = await fetch(url);
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => "");
+        const isQuota = isB2QuotaError(res.status, errorText);
+        const message = isQuota
+          ? "Usage Limit Exceeded — Backblaze quota limit reached"
+          : `Download failed (${res.status})`;
+        toast.error(message);
+        notified = true;
+        return;
+      }
       const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -104,7 +137,9 @@ export function AlbumView() {
       URL.revokeObjectURL(objectUrl);
     } catch (err) {
       console.error("Download failed", err);
-      toast.error("Download failed");
+      if (!notified) {
+        toast.error("Download failed");
+      }
     }
   };
 
@@ -171,57 +206,83 @@ export function AlbumView() {
   if (!album) return <div className="p-10 text-center animate-pulse">Loading gallery...</div>;
 
   return (
-    <main className="min-h-screen py-8">
-      <header className="mb-10 px-4">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900">{album.name}</h1>
-          <p className="mt-2 text-gray-500">{album.images.length} Photos</p>
-        </div>
-        
-        <div className="flex justify-center gap-2 mt-4 flex-wrap">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={handleDownloadAll}
-            disabled={isDownloading || album.images.length === 0}
-          >
-            <Download className="h-4 w-4" />
-            {isDownloading ? "Downloading..." : "Download All"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={handleShareAlbum}
-          >
-            <Share2 className="h-4 w-4" />
-            Share Album
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={handleCopyAlbumLink}
-          >
-            <Copy className="h-4 w-4" />
-            Copy Link
-          </Button>
-          {user && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={() => navigate("/admin")}
+    <main className="min-h-screen pt-2 pb-8">
+      {/* Hero Image Section with Overlay */}
+      <div className="mx-auto max-w-7xl px-4 mb-4">
+        <div className="relative w-full h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-2xl">
+          {/* Hero Image */}
+          {album.heroImage ? (
+            <div 
+              className="cursor-pointer w-full h-full"
+              onClick={() => setFullscreenImage(album.heroImage!)}
             >
-              <Settings className="h-4 w-4" />
-              Admin Dashboard
-            </Button>
+              <GalleryImage
+                src={album.heroImage.src}
+                alt={album.heroImage.title}
+                onClick={() => setFullscreenImage(album.heroImage!)}
+              />
+            </div>
+          ) : (
+            <img
+              src="https://picsum.photos/seed/hero/1920/1080"
+              alt="Hero placeholder"
+              className="w-full h-full object-cover"
+            />
           )}
+          
+          {/* Overlay with Album Info */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-6 md:p-8">
+            <div className="text-center mb-4">
+              <h1 className="text-3xl md:text-5xl font-bold text-white drop-shadow-lg">{album.name}</h1>
+              <p className="mt-2 text-white/90 text-lg">{album.images.length} Photos</p>
+            </div>
+            
+            <div className="flex justify-center gap-2 flex-wrap">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-2 backdrop-blur-sm bg-white/90 hover:bg-white text-slate-900"
+                onClick={handleDownloadAll}
+                disabled={isDownloading || album.images.length === 0}
+              >
+                <Download className="h-4 w-4" />
+                {isDownloading ? "Downloading..." : "Download All"}
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-2 backdrop-blur-sm bg-white/90 hover:bg-white text-slate-900"
+                onClick={handleShareAlbum}
+              >
+                <Share2 className="h-4 w-4" />
+                Share Album
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-2 backdrop-blur-sm bg-white/90 hover:bg-white text-slate-900"
+                onClick={handleCopyAlbumLink}
+              >
+                <Copy className="h-4 w-4" />
+                Copy Link
+              </Button>
+              {user && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="gap-2 backdrop-blur-sm bg-white/90 hover:bg-white text-slate-900"
+                  onClick={() => navigate("/admin")}
+                >
+                  <Settings className="h-4 w-4" />
+                  Admin Dashboard
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
-      </header>
+      </div>
 
-      <div className="mx-auto max-w-7xl px-4">
+      <div className="mx-auto max-w-7xl px-4 pt-12">
         {/* CSS Masonry Grid using Tailwind columns */}
         <div className="columns-2 gap-4 sm:columns-2 md:columns-3 lg:columns-4">
           {album.images.map((img) => {
@@ -302,31 +363,21 @@ export function AlbumView() {
             </div>
 
             <div className="flex-1 flex items-center justify-center overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <img
-                src={fullscreenImage!.fullSrc}
-                alt={fullscreenImage!.title}
-                className="max-h-full max-w-full object-contain"
-                onError={(e) => {
-                  const img = e.currentTarget;
-                  if (img.style.display !== 'none') {
-                    img.style.display = 'none';
-                    // Show error message
-                    const container = img.parentElement;
-                    if (container) {
-                      const error = document.createElement('div');
-                      error.className = 'flex flex-col items-center justify-center text-white';
-                      error.innerHTML = `
-                        <svg class="h-12 w-12 mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        <p class="font-medium">Usage Limit Exceeded</p>
-                        <p class="text-sm text-gray-300 mt-1">Backblaze quota limit reached</p>
-                      `;
-                      container.appendChild(error);
-                    }
-                  }
-                }}
-              />
+              {fullscreenLoadError ? (
+                <div className="w-full h-full max-w-full max-h-full">
+                  <ImageErrorPanel />
+                </div>
+              ) : (
+                <img
+                  src={fullscreenImage!.fullSrc}
+                  alt={fullscreenImage!.title}
+                  className="max-h-full max-w-full object-contain"
+                  onError={() => {
+                    setFullscreenLoadError(true);
+                    toast.error("Usage Limit Exceeded — Backblaze quota limit reached");
+                  }}
+                />
+              )}
             </div>
 
             {fullscreenImage!.title && (

@@ -19,6 +19,7 @@ import { QRCodeSVG } from "qrcode.react";
 
 // shadcn components
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -78,6 +79,8 @@ interface Album {
   name: string;
   images?: any[];
   createdAt?: any;
+  isPublic?: boolean;
+  heroImage?: any;
 }
 
 interface ImageItem {
@@ -94,12 +97,18 @@ const ImageCard = memo(({
   image, 
   isSelected, 
   onToggleSelection, 
-  onOpenFullscreen 
+  onOpenFullscreen,
+  isHero,
+  onSetHero,
+  onRemoveHero
 }: { 
   image: ImageItem; 
   isSelected: boolean; 
   onToggleSelection: (id: string) => void;
   onOpenFullscreen: (image: ImageItem) => void;
+  isHero?: boolean;
+  onSetHero?: (imageId: string) => void;
+  onRemoveHero?: () => void;
 }) => {
   const [imageError, setImageError] = useState(false);
   const [useFallback, setUseFallback] = useState(false);
@@ -136,14 +145,16 @@ const ImageCard = memo(({
       </div>
 
       {/* Fullscreen Button */}
-      <Button
-        size="sm"
-        variant="secondary"
-        className="absolute top-3 right-3 h-10 w-10 md:h-8 md:w-8 p-0 shadow-md z-10"
-        onClick={() => onOpenFullscreen(image)}
-      >
-        <Maximize2 className="h-5 w-5 md:h-4 md:w-4" />
-      </Button>
+      {!imageError && (
+        <Button
+          size="sm"
+          variant="secondary"
+          className="absolute top-3 right-3 h-10 w-10 md:h-8 md:w-8 p-0 shadow-md z-10"
+          onClick={() => onOpenFullscreen(image)}
+        >
+          <Maximize2 className="h-5 w-5 md:h-4 md:w-4" />
+        </Button>
+      )}
 
       <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden relative">
         {imageError ? (
@@ -170,6 +181,42 @@ const ImageCard = memo(({
         <p className="text-sm md:text-xs text-muted-foreground">
           {image.size ? `${(image.size / 1024).toFixed(1)} KB` : "Unknown"}
         </p>
+        {isHero !== undefined && (
+          <div className="pt-1">
+            {isHero ? (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">Hero</span>
+                {onRemoveHero && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 text-xs px-2"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveHero();
+                    }}
+                  >
+                    Remove
+                  </Button>
+                )}
+              </div>
+            ) : (
+              onSetHero && !imageError && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-xs w-full"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSetHero(image.id);
+                  }}
+                >
+                  Set as Hero
+                </Button>
+              )
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -186,6 +233,7 @@ export default function AdminDashboard() {
   const [loadingImages, setLoadingImages] = useState(false);
   const [isCreatingAlbum, setIsCreatingAlbum] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState("");
+  const [newAlbumPublic, setNewAlbumPublic] = useState(true);
   const [isRenaming, setIsRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [files, setFiles] = useState<FileList | null>(null);
@@ -214,12 +262,13 @@ export default function AdminDashboard() {
     }
   }, [user]);
 
-  // Load album images when an album is selected
+  // Load album images when the selected album changes (by id),
+  // avoid reloading on visibility/name tweaks.
   useEffect(() => {
     if (selectedAlbum) {
       loadAlbumImages();
     }
-  }, [selectedAlbum]);
+  }, [selectedAlbum?.id]);
 
   const loadAlbums = async () => {
     try {
@@ -232,9 +281,12 @@ export default function AdminDashboard() {
           name: doc.data().name,
           images: doc.data().images || [],
           createdAt: doc.data().createdAt,
+          isPublic: doc.data().isPublic ?? true,
+          heroImage: doc.data().heroImage,
         });
       });
-      setAlbums(albumsList.sort((a, b) => b.createdAt - a.createdAt));
+      const norm = (d: any) => (d?.toMillis ? d.toMillis() : d?.seconds ? d.seconds * 1000 : d || 0);
+      setAlbums(albumsList.sort((a, b) => norm(b.createdAt) - norm(a.createdAt)));
     } catch (error: any) {
       console.error(error);
       toast.error("Failed to load albums");
@@ -288,8 +340,10 @@ export default function AdminDashboard() {
         name: newAlbumName,
         images: [],
         createdAt: new Date(),
+        isPublic: newAlbumPublic,
       });
       setNewAlbumName("");
+      setNewAlbumPublic(true);
       loadAlbums();
       toast.success(`Album "${newAlbumName}" created!`);
     } catch (error: any) {
@@ -320,6 +374,18 @@ export default function AdminDashboard() {
     } catch (error: any) {
       console.error(error);
       toast.error("Failed to rename album");
+    }
+  };
+
+  const handleToggleAlbumVisibility = async (album: Album, nextPublic: boolean) => {
+    try {
+      await updateDoc(doc(db, "albums", album.id), { isPublic: nextPublic });
+      setSelectedAlbum((prev) => (prev && prev.id === album.id ? { ...prev, isPublic: nextPublic } : prev));
+      setAlbums((prev) => prev.map((a) => (a.id === album.id ? { ...a, isPublic: nextPublic } : a)));
+      toast.success(`Album set to ${nextPublic ? "Public" : "Private"}`);
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Failed to update visibility");
     }
   };
 
@@ -524,6 +590,32 @@ export default function AdminDashboard() {
   const handleOpenFullscreen = useCallback((image: ImageItem) => {
     setFullscreenImage(image);
   }, []);
+
+  const handleSetHeroImage = async (imageRef: any) => {
+    if (!selectedAlbum) return;
+    try {
+      await updateDoc(doc(db, "albums", selectedAlbum.id), { heroImage: imageRef });
+      setSelectedAlbum((prev) => (prev ? { ...prev, heroImage: imageRef } : prev));
+      setAlbums((prev) => prev.map((a) => (a.id === selectedAlbum.id ? { ...a, heroImage: imageRef } : a)));
+      toast.success("Hero image set!");
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Failed to set hero image");
+    }
+  };
+
+  const handleRemoveHeroImage = async () => {
+    if (!selectedAlbum) return;
+    try {
+      await updateDoc(doc(db, "albums", selectedAlbum.id), { heroImage: null });
+      setSelectedAlbum((prev) => (prev ? { ...prev, heroImage: null } : prev));
+      setAlbums((prev) => prev.map((a) => (a.id === selectedAlbum.id ? { ...a, heroImage: null } : a)));
+      toast.success("Hero image removed");
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Failed to remove hero image");
+    }
+  };
 
   const deleteFromWorker = async (fileName: string, idToken: string) => {
     try {
@@ -807,7 +899,7 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="w-screen h-screen flex items-center justify-center">
+      <div className="min-h-screen w-full flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -866,6 +958,15 @@ export default function AdminDashboard() {
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
+                  <div className="flex items-center gap-2 pt-1 text-sm">
+                    <Switch
+                      checked={newAlbumPublic}
+                      onCheckedChange={setNewAlbumPublic}
+                      disabled={isCreatingAlbum}
+                      ariaLabel="Toggle public album"
+                    />
+                    <Label htmlFor="newAlbumPublic" className="text-sm">Public album</Label>
+                  </div>
                 </div>
 
                 {/* Albums List */}
@@ -887,8 +988,11 @@ export default function AdminDashboard() {
                       >
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate text-sm">{album.name}</p>
-                          <p className="text-xs opacity-75">
-                            {album.images?.length || 0} images
+                          <p className="text-xs opacity-75 flex items-center gap-2">
+                            <span>{album.images?.length || 0} images</span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${album.isPublic ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                              {album.isPublic ? "Public" : "Private"}
+                            </span>
                           </p>
                         </div>
                         <ChevronRight className="h-4 w-4 ml-2 flex-shrink-0" />
@@ -944,7 +1048,17 @@ export default function AdminDashboard() {
                     </div>
 
                     {isRenaming !== selectedAlbum.id && (
-                      <div className="flex gap-2 ml-2 flex-wrap">
+                      <div className="flex gap-2 ml-2 flex-wrap items-center">
+                        <div className="flex items-center gap-2 pr-2 border-r border-muted-foreground/20">
+                          <div className="flex items-center gap-2 text-xs">
+                            <Switch
+                              checked={!!selectedAlbum.isPublic}
+                              onCheckedChange={(val) => handleToggleAlbumVisibility(selectedAlbum, val)}
+                              ariaLabel="Toggle album visibility"
+                            />
+                            <span>Public</span>
+                          </div>
+                        </div>
                         <Button
                           size="sm"
                           variant="outline"
@@ -1091,15 +1205,22 @@ export default function AdminDashboard() {
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                        {albumImages.map((image) => (
-                          <ImageCard
-                            key={image.id}
-                            image={image}
-                            isSelected={selectedImages.has(image.id)}
-                            onToggleSelection={handleToggleSelection}
-                            onOpenFullscreen={handleOpenFullscreen}
-                          />
-                        ))}
+                        {albumImages.map((image) => {
+                          const imageRef = selectedAlbum.images?.find((ref: any) => ref.id === image.id);
+                          const isHeroImage = selectedAlbum.heroImage?.id === image.id;
+                          return (
+                            <ImageCard
+                              key={image.id}
+                              image={image}
+                              isSelected={selectedImages.has(image.id)}
+                              onToggleSelection={handleToggleSelection}
+                              onOpenFullscreen={handleOpenFullscreen}
+                              isHero={isHeroImage}
+                              onSetHero={() => handleSetHeroImage(imageRef)}
+                              onRemoveHero={handleRemoveHeroImage}
+                            />
+                          );
+                        })}
                       </div>
                     </>
                   )}
