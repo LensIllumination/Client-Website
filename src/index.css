@@ -1,6 +1,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+@font-face {
+  font-family: "Graniellania";
+  src: url(./assets/fonts/GranieIlania.ttf) format("truetype");
+}
+
+body {
+  font-family: sans-serif;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

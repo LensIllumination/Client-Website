@@ -19,8 +19,10 @@ export const loadAlbum = async (albumId : string) => {
     images: imageDocs.map(snap => ({
       id: snap.id,
       title: snap.data().name,
-      // Convert the file-name field into a full Proxy URL
-      src: `${PROXY_URL}/${snap.data()["file-name"]}`
+      // Use thumbnail for src, fallback to file-name if no thumbnail
+      src: `${PROXY_URL}/${snap.data()["thumbnail-name"] || snap.data()["file-name"]}`,
+      // Store full-size URL for fullscreen
+      fullSrc: `${PROXY_URL}/${snap.data()["file-name"]}`
     }))
   };
 };
