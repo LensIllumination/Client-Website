@@ -1,0 +1,7 @@
+name = "b2-proxy"
+main = "worker.js"
+compatibility_date = "2026-01-19"
+
+[vars]
+B2_ENDPOINT = "s3.ca-east-006.backblazeb2.com"
+BUCKET_NAME = "LensIlluminationPhotos"

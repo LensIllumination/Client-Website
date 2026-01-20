@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { loadAlbum } from "./lib/LoadAlbum";
 import { Button } from "@/components/ui/button";
+import GalleryImage from "@/components/GalleryImage";
 import { auth } from "@/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import type { User } from "firebase/auth";
@@ -226,15 +227,14 @@ export function AlbumView() {
           {album.images.map((img) => {
             const height = getImageHeight(img.id);
             return (
-              <div 
-                key={img.id} 
-                onClick={() => setFullscreenImage(img)} 
-                className={`cursor-pointer mb-4 break-inside-avoid overflow-hidden rounded-lg shadow-md hover:shadow-xl transition-shadow ${height}`}
+              <div
+                key={img.id}
+                className={`cursor-pointer mb-4 break-inside-avoid rounded-lg ${height}`}
               >
-                <img 
-                  src={img.src} 
+                <GalleryImage
+                  src={img.src}
                   alt={img.title}
-                  className="w-full h-full object-cover bg-gray-100"
+                  onClick={() => setFullscreenImage(img)}
                 />
               </div>
             );
@@ -306,6 +306,26 @@ export function AlbumView() {
                 src={fullscreenImage!.fullSrc}
                 alt={fullscreenImage!.title}
                 className="max-h-full max-w-full object-contain"
+                onError={(e) => {
+                  const img = e.currentTarget;
+                  if (img.style.display !== 'none') {
+                    img.style.display = 'none';
+                    // Show error message
+                    const container = img.parentElement;
+                    if (container) {
+                      const error = document.createElement('div');
+                      error.className = 'flex flex-col items-center justify-center text-white';
+                      error.innerHTML = `
+                        <svg class="h-12 w-12 mb-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="font-medium">Usage Limit Exceeded</p>
+                        <p class="text-sm text-gray-300 mt-1">Backblaze quota limit reached</p>
+                      `;
+                      container.appendChild(error);
+                    }
+                  }
+                }}
               />
             </div>
 

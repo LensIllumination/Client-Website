@@ -44,6 +44,35 @@ import {
 
 const WORKER_URL = "https://b2-proxy.lensillumination.workers.dev";
 
+// Helper function to detect B2 quota/limit errors
+const isB2QuotaError = (status: number, errorText: string): boolean => {
+  if (status === 403) {
+    const lowerError = errorText.toLowerCase();
+    return (
+      lowerError.includes("quota") ||
+      lowerError.includes("limit") ||
+      lowerError.includes("bandwidth") ||
+      lowerError.includes("account_cap_exceeded") ||
+      lowerError.includes("service_unavailable")
+    );
+  }
+  return false;
+};
+
+// Helper function to get user-friendly error message
+const getB2ErrorMessage = (status: number, errorText: string): string => {
+  if (isB2QuotaError(status, errorText)) {
+    return "Backblaze storage quota exceeded. Please upgrade your account or delete some files.";
+  }
+  if (status === 403) {
+    return "Access denied. Please check your authentication.";
+  }
+  if (status >= 500) {
+    return "Backblaze service error. Please try again later.";
+  }
+  return errorText || `Error (${status})`;
+};
+
 interface Album {
   id: string;
   name: string;
@@ -72,6 +101,23 @@ const ImageCard = memo(({
   onToggleSelection: (id: string) => void;
   onOpenFullscreen: (image: ImageItem) => void;
 }) => {
+  const [imageError, setImageError] = useState(false);
+  const [useFallback, setUseFallback] = useState(false);
+
+  const handleImageError = async () => {
+    // If thumbnail failed and not tried fallback yet, try full-size image
+    if (!useFallback && image["file-name"]) {
+      setUseFallback(true);
+    } else {
+      // Both thumbnail and full-size failed - mark as error
+      setImageError(true);
+    }
+  };
+
+  const imageSrc = useFallback 
+    ? `${WORKER_URL}/${image["file-name"]}`
+    : `${WORKER_URL}/${image["thumbnail-name"] || image["file-name"]}`;
+
   return (
     <div
       className={`border rounded-lg overflow-hidden relative ${
@@ -99,14 +145,23 @@ const ImageCard = memo(({
         <Maximize2 className="h-5 w-5 md:h-4 md:w-4" />
       </Button>
 
-      <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        <img
-          src={`${WORKER_URL}/${image["thumbnail-name"] || image["file-name"]}`}
-          alt={image.name}
-          className="w-full h-full object-cover cursor-pointer"
-          loading="lazy"
-          onClick={() => onOpenFullscreen(image)}
-        />
+      <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden relative">
+        {imageError ? (
+          <div className="flex flex-col items-center justify-center w-full h-full bg-red-50">
+            <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
+            <p className="text-xs text-red-600 font-medium text-center">Usage Limit</p>
+            <p className="text-xs text-red-500/70 text-center mt-1">Exceeded</p>
+          </div>
+        ) : (
+          <img
+            src={imageSrc}
+            alt={image.name}
+            className="w-full h-full object-cover cursor-pointer"
+            loading="lazy"
+            onClick={() => onOpenFullscreen(image)}
+            onError={handleImageError}
+          />
+        )}
       </div>
       <div className="p-3 space-y-1">
         <p className="font-medium text-sm md:text-xs truncate" title={image.name}>
@@ -128,6 +183,7 @@ export default function AdminDashboard() {
   const [albums, setAlbums] = useState<Album[]>([]);
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   const [albumImages, setAlbumImages] = useState<ImageItem[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
   const [isCreatingAlbum, setIsCreatingAlbum] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState("");
   const [isRenaming, setIsRenaming] = useState<string | null>(null);
@@ -188,9 +244,11 @@ export default function AdminDashboard() {
   const loadAlbumImages = async () => {
     if (!selectedAlbum || !selectedAlbum.images || selectedAlbum.images.length === 0) {
       setAlbumImages([]);
+      setLoadingImages(false);
       return;
     }
     
+    setLoadingImages(true);
     try {
       const images: ImageItem[] = [];
       
@@ -213,6 +271,8 @@ export default function AdminDashboard() {
     } catch (error: any) {
       console.error(error);
       toast.error("Failed to load images");
+    } finally {
+      setLoadingImages(false);
     }
   };
 
@@ -489,6 +549,8 @@ export default function AdminDashboard() {
   const forceDownload = async (url: string, filename: string) => {
     try {
       const res = await fetch(url);
+      if (!res.ok) throw new Error("Download failed");
+      
       const blob = await res.blob();
       const objectUrl = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -636,7 +698,9 @@ export default function AdminDashboard() {
 
         if (!b2Res.ok) {
           const errorText = await b2Res.text();
-          throw new Error(errorText || "Worker upload failed");
+          const friendlyError = getB2ErrorMessage(b2Res.status, errorText);
+          console.error("B2 upload failed", { status: b2Res.status, error: errorText });
+          throw new Error(friendlyError);
         }
 
         // Upload thumbnail
@@ -651,7 +715,9 @@ export default function AdminDashboard() {
 
         if (!thumbRes.ok) {
           const errorText = await thumbRes.text();
-          throw new Error(errorText || "Thumbnail upload failed");
+          const friendlyError = getB2ErrorMessage(thumbRes.status, errorText);
+          console.error("B2 thumbnail upload failed", { status: thumbRes.status, error: errorText });
+          throw new Error(friendlyError);
         }
 
         const imgRef = await addDoc(collection(db, "images"), {
@@ -978,7 +1044,14 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Images Section */}
-                  {albumImages.length === 0 ? (
+                  {loadingImages ? (
+                    <div className="text-center py-12">
+                      <Loader2 className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4 animate-spin" />
+                      <p className="text-muted-foreground">
+                        Loading images...
+                      </p>
+                    </div>
+                  ) : albumImages.length === 0 ? (
                     <div className="text-center py-12">
                       <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
                       <p className="text-muted-foreground">
