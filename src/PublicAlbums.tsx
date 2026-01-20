@@ -33,7 +33,7 @@ export default function PublicAlbums() {
             try {
               const heroDoc = await getDoc(data.heroImageRef);
               if (heroDoc.exists()) {
-                heroImageUrl = heroDoc.data()?.src;
+                heroImageUrl = (heroDoc.data() as any)?.src;
               }
             } catch (err) {
               console.error("Failed to load hero image", err);
