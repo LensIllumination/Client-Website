@@ -19,11 +19,12 @@ export const loadAlbum = async (albumId : string) => {
   if (heroImageRef) {
     const heroDoc = await getDoc(heroImageRef);
     if (heroDoc.exists()) {
+      const heroData = heroDoc.data() as any;
       heroImage = {
         id: heroDoc.id,
-        title: heroDoc.data().name,
-        src: `${PROXY_URL}/${heroDoc.data()["thumbnail-name"] || heroDoc.data()["file-name"]}`,
-        fullSrc: `${PROXY_URL}/${heroDoc.data()["file-name"]}`
+        title: heroData.name,
+        src: `${PROXY_URL}/${heroData["thumbnail-name"] || heroData["file-name"]}`,
+        fullSrc: `${PROXY_URL}/${heroData["file-name"]}`
       };
     }
   }
@@ -31,13 +32,16 @@ export const loadAlbum = async (albumId : string) => {
   return {
     name,
     heroImage,
-    images: imageDocs.map(snap => ({
-      id: snap.id,
-      title: snap.data().name,
-      // Use thumbnail for src, fallback to file-name if no thumbnail
-      src: `${PROXY_URL}/${snap.data()["thumbnail-name"] || snap.data()["file-name"]}`,
-      // Store full-size URL for fullscreen
-      fullSrc: `${PROXY_URL}/${snap.data()["file-name"]}`
-    }))
+    images: imageDocs.map(snap => {
+      const data = snap.data() as any;
+      return {
+        id: snap.id,
+        title: data.name,
+        // Use thumbnail for src, fallback to file-name if no thumbnail
+        src: `${PROXY_URL}/${data["thumbnail-name"] || data["file-name"]}`,
+        // Store full-size URL for fullscreen
+        fullSrc: `${PROXY_URL}/${data["file-name"]}`
+      };
+    })
   };
 };
