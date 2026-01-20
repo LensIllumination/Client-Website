@@ -7,7 +7,7 @@ interface Album {
   images: Array<{ id: string; src: string; title: string }>;
 }
 
-export function Gallery({ albumId }: { albumId: string }) {
+export function AlbumView({ albumId }: { albumId: string }) {
   const [album, setAlbum] = React.useState<Album | null>(null);
 
 
@@ -23,18 +23,6 @@ export function Gallery({ albumId }: { albumId: string }) {
         className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 max-w-6xl w-full"
       >
         {album.images.map((img) => (
-          <GalleryImage key={img.id} src={img.src} alt={img.title} />
-        ))}
-      </div>
-    </div>
-  );
-
-  return (
-    <div className="w-full flex justify-center px-2">
-      <div
-        className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 max-w-6xl w-full"
-      >
-        {displayImages.map((img) => (
           <GalleryImage key={img.id} src={img.src} alt={img.title} />
         ))}
       </div>
