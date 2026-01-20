@@ -27,7 +27,8 @@ export default function Contact() {
     e.preventDefault();
     
     if (!formData.name.trim() || !formData.email.trim() || !formData.message.trim()) {
-      toast.error("Please fill in all fields");
+      console.error("Contact form validation failed: missing required fields");
+      toast.error("Please try again later");
       return;
     }
 
@@ -39,7 +40,7 @@ export default function Contact() {
       setFormData({ name: "", email: "", subject: "", message: "" });
     } catch (error) {
       console.error("Failed to send message:", error);
-      toast.error("Failed to send message. Please try again.");
+      toast.error("Please try again later");
     } finally {
       setIsSubmitting(false);
     }

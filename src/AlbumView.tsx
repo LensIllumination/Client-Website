@@ -6,7 +6,7 @@ import GalleryImage from "@/components/GalleryImage";
 import { auth } from "@/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import type { User } from "firebase/auth";
-import { X, Settings, Download, Share2, Copy } from "lucide-react";
+import { X, Settings, Download, Share2, Copy, ArrowUp } from "lucide-react";
 import JSZip from "jszip";
 import { toast } from "sonner";
 import ImageErrorPanel from "@/components/ImageErrorPanel";
@@ -26,6 +26,7 @@ export function AlbumView() {
   const [fullscreenLoadError, setFullscreenLoadError] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [imageSizes, setImageSizes] = useState<Map<string, string>>(new Map());
+  const [showScrollTop, setShowScrollTop] = useState(false);
   const navigate = useNavigate();
 
   // Generate random height for each image (weighted towards shorter images)
@@ -73,6 +74,20 @@ export function AlbumView() {
     setFullscreenLoadError(false);
   }, [fullscreenImage]);
 
+  useEffect(() => {
+    // Show scroll to top button when scrolled past ~800px (roughly after first few images)
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 800);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleShareAlbum = async () => {
     if (!albumId || !album) return;
     const url = `${window.location.origin}/album/${albumId}`;
@@ -84,7 +99,8 @@ export function AlbumView() {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied to clipboard!");
     } catch (error) {
-      toast.error("Failed to share link");
+      console.error("Share link error:", error);
+      toast.error("Please try again later");
     }
   };
 
@@ -95,8 +111,8 @@ export function AlbumView() {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied to clipboard!");
     } catch (err) {
-      console.error(err);
-      toast.error("Failed to copy link");
+      console.error("Copy link error:", err);
+      toast.error("Please try again later");
     }
   };
 
@@ -120,11 +136,8 @@ export function AlbumView() {
       const res = await fetch(url);
       if (!res.ok) {
         const errorText = await res.text().catch(() => "");
-        const isQuota = isB2QuotaError(res.status, errorText);
-        const message = isQuota
-          ? "Usage Limit Exceeded — Backblaze quota limit reached"
-          : `Download failed (${res.status})`;
-        toast.error(message);
+        console.error("Download failed:", res.status, errorText);
+        toast.error("Please try again later");
         notified = true;
         return;
       }
@@ -136,9 +149,9 @@ export function AlbumView() {
       link.click();
       URL.revokeObjectURL(objectUrl);
     } catch (err) {
-      console.error("Download failed", err);
+      console.error("Download failed:", err);
       if (!notified) {
-        toast.error("Download failed");
+        toast.error("Please try again later");
       }
     }
   };
@@ -153,8 +166,8 @@ export function AlbumView() {
         toast.success("Link copied to clipboard!");
       }
     } catch (err) {
-      console.error("Share failed", err);
-      toast.error("Share failed");
+      console.error("Share failed:", err);
+      toast.error("Please try again later");
     }
   };
 
@@ -170,19 +183,49 @@ export function AlbumView() {
      
        if (!folder) throw new Error("Failed to create zip folder");
      
+       let successCount = 0;
+       let failedCount = 0;
+       let quotaExceeded = false;
+       
        // Download all images and add to zip
        for (let i = 0; i < album.images.length; i++) {
          const img = album.images[i];
          toast.loading(`Downloading ${i + 1} of ${album.images.length}...`, { id: toastId });
        
          try {
-          const response = await fetch(img.fullSrc);
+           const response = await fetch(img.fullSrc);
+           
+           if (!response.ok) {
+             const errorText = await response.text().catch(() => "");
+             console.error(`Image download failed (${img.title}):`, response.status, errorText);
+             if (isB2QuotaError(response.status, errorText)) {
+               quotaExceeded = true;
+               toast.error("Please try again later", { id: toastId });
+               break;
+             }
+             console.error(`Failed to download ${img.title}: HTTP ${response.status}`);
+             failedCount++;
+             continue;
+           }
+           
            const blob = await response.blob();
-          const extension = img.fullSrc.split('.').pop()?.split('?')[0] || 'jpg';
+           const extension = img.fullSrc.split('.').pop()?.split('?')[0] || 'jpg';
            folder.file(`${img.title || `image-${i + 1}`}.${extension}`, blob);
+           successCount++;
          } catch (error) {
            console.error(`Failed to download ${img.title}:`, error);
+           failedCount++;
          }
+       }
+       
+       if (quotaExceeded) {
+         return;
+       }
+       
+       if (successCount === 0) {
+         console.error("All downloads failed");
+         toast.error("Please try again later", { id: toastId });
+         return;
        }
      
        toast.loading("Creating zip file...", { id: toastId });
@@ -193,10 +236,17 @@ export function AlbumView() {
        link.download = `${album.name}.zip`;
        link.click();
      
-       toast.success("Download complete!", { id: toastId });
+       if (failedCount > 0) {
+         toast.success(`Downloaded ${successCount} of ${album.images.length} images`, { 
+           id: toastId, 
+           description: `${failedCount} image${failedCount > 1 ? 's' : ''} failed to download` 
+         });
+       } else {
+         toast.success("Download complete!", { id: toastId });
+       }
      } catch (error: any) {
-       console.error(error);
-       toast.error("Download failed", { id: toastId, description: error.message });
+       console.error("Zip download error:", error);
+       toast.error("Please try again later", { id: toastId });
      } finally {
        setIsDownloading(false);
      }
@@ -372,9 +422,10 @@ export function AlbumView() {
                   src={fullscreenImage!.fullSrc}
                   alt={fullscreenImage!.title}
                   className="max-h-full max-w-full object-contain"
-                  onError={() => {
+                  onError={(e) => {
+                    console.error("Fullscreen image load error:", fullscreenImage?.fullSrc, e);
                     setFullscreenLoadError(true);
-                    toast.error("Usage Limit Exceeded — Backblaze quota limit reached");
+                    toast.error("Please try again later");
                   }}
                 />
               )}
@@ -387,6 +438,18 @@ export function AlbumView() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Scroll to Top Button */}
+      {showScrollTop && (
+        <Button
+          onClick={scrollToTop}
+          className="fixed bottom-8 right-8 h-12 w-12 rounded-full shadow-lg z-40 transition-opacity hover:opacity-90"
+          size="icon"
+          aria-label="Scroll to top"
+        >
+          <ArrowUp className="h-5 w-5" />
+        </Button>
       )}
     </main>
   );

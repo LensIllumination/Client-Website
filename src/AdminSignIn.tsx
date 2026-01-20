@@ -37,7 +37,8 @@ export default function AdminSignIn() {
 
   const handleSignIn = async () => {
     if (!signInEmail || !signInPassword) {
-      toast.error("Missing Info", { description: "Please enter email and password." });
+      console.error("Sign in validation failed: missing email or password");
+      toast.error("Please try again later");
       return;
     }
 
@@ -49,28 +50,8 @@ export default function AdminSignIn() {
       toast.success("Signed in successfully!");
       navigate("/admin");
     } catch (error: any) {
-      console.error(error);
-      
-      let errorMessage = "Sign in failed";
-      
-      // Parse Firebase error codes for user-friendly messages
-      if (error.code === "auth/user-not-found") {
-        errorMessage = "User not found";
-      } else if (error.code === "auth/wrong-password") {
-        errorMessage = "Incorrect password";
-      } else if (error.code === "auth/invalid-email") {
-        errorMessage = "Invalid email address";
-      } else if (error.code === "auth/invalid-credential") {
-        errorMessage = "Invalid email or password";
-      } else if (error.code === "auth/user-disabled") {
-        errorMessage = "This account has been disabled";
-      } else if (error.code === "auth/too-many-requests") {
-        errorMessage = "Too many failed attempts. Please try again later.";
-      }
-      
-      toast.error(errorMessage, {
-        description: "Please check your credentials and try again.",
-      });
+      console.error("Sign in error:", error.code, error.message);
+      toast.error("Please try again later");
     } finally {
       setIsSigningIn(false);
     }

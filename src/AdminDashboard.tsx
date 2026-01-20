@@ -288,8 +288,8 @@ export default function AdminDashboard() {
       const norm = (d: any) => (d?.toMillis ? d.toMillis() : d?.seconds ? d.seconds * 1000 : d || 0);
       setAlbums(albumsList.sort((a, b) => norm(b.createdAt) - norm(a.createdAt)));
     } catch (error: any) {
-      console.error(error);
-      toast.error("Failed to load albums");
+      console.error("Load albums error:", error);
+      toast.error("Please try again later");
     }
   };
 
@@ -321,8 +321,8 @@ export default function AdminDashboard() {
       
       setAlbumImages(images);
     } catch (error: any) {
-      console.error(error);
-      toast.error("Failed to load images");
+      console.error("Load images error:", error);
+      toast.error("Please try again later");
     } finally {
       setLoadingImages(false);
     }
@@ -330,7 +330,8 @@ export default function AdminDashboard() {
 
   const handleCreateAlbum = async () => {
     if (!newAlbumName.trim()) {
-      toast.error("Album name is required");
+      console.error("Create album validation failed: missing album name");
+      toast.error("Please try again later");
       return;
     }
 
@@ -347,8 +348,8 @@ export default function AdminDashboard() {
       loadAlbums();
       toast.success(`Album "${newAlbumName}" created!`);
     } catch (error: any) {
-      console.error(error);
-      toast.error("Failed to create album");
+      console.error("Create album error:", error);
+      toast.error("Please try again later");
     } finally {
       setIsCreatingAlbum(false);
     }
@@ -356,7 +357,8 @@ export default function AdminDashboard() {
 
   const handleRenameAlbum = async (albumId: string) => {
     if (!renameValue.trim()) {
-      toast.error("Album name is required");
+      console.error("Rename validation failed: empty album name");
+      toast.error("Please try again later");
       return;
     }
 
@@ -372,8 +374,8 @@ export default function AdminDashboard() {
       }
       toast.success("Album renamed!");
     } catch (error: any) {
-      console.error(error);
-      toast.error("Failed to rename album");
+      console.error("Rename album error:", error);
+      toast.error("Please try again later");
     }
   };
 
@@ -384,8 +386,8 @@ export default function AdminDashboard() {
       setAlbums((prev) => prev.map((a) => (a.id === album.id ? { ...a, isPublic: nextPublic } : a)));
       toast.success(`Album set to ${nextPublic ? "Public" : "Private"}`);
     } catch (error: any) {
-      console.error(error);
-      toast.error("Failed to update visibility");
+      console.error("Update visibility error:", error);
+      toast.error("Please try again later");
     }
   };
 
@@ -402,7 +404,8 @@ export default function AdminDashboard() {
       const albumRef = doc(db, "albums", albumId);
       const albumSnap = await getDoc(albumRef);
       if (!albumSnap.exists()) {
-        toast.error("Album not found", { id: toastId });
+        console.error("Album not found:", albumId);
+        toast.error("Please try again later", { id: toastId });
         return;
       }
 
@@ -449,8 +452,8 @@ export default function AdminDashboard() {
         : `Album deleted successfully with all ${deletedFromBucket} files.`;
       toast.success(message, { id: toastId });
     } catch (error: any) {
-      console.error(error);
-      toast.error("Failed to delete album", { description: error.message });
+      console.error("Delete album error:", error);
+      toast.error("Please try again later");
     }
   };
 
@@ -524,8 +527,8 @@ export default function AdminDashboard() {
         : `${selectedImages.size} image(s) deleted successfully.`;
       toast.success(message, { id: toastId });
     } catch (error: any) {
-      console.error(error);
-      toast.error("Failed to delete images", { description: error.message });
+      console.error("Bulk delete error:", error);
+      toast.error("Please try again later");
     }
   };
 
@@ -569,7 +572,8 @@ export default function AdminDashboard() {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied to clipboard!");
     } catch (error) {
-      toast.error("Failed to share link");
+      console.error("Share link error:", error);
+      toast.error("Please try again later");
     }
   }, [getAlbumUrl, selectedAlbum?.name]);
 
@@ -579,7 +583,8 @@ export default function AdminDashboard() {
       await navigator.clipboard.writeText(url);
       toast.success("Link copied to clipboard!");
     } catch (error) {
-      toast.error("Failed to copy link");
+      console.error("Copy link error:", error);
+      toast.error("Please try again later");
     }
   }, [getAlbumUrl]);
 
@@ -599,8 +604,8 @@ export default function AdminDashboard() {
       setAlbums((prev) => prev.map((a) => (a.id === selectedAlbum.id ? { ...a, heroImage: imageRef } : a)));
       toast.success("Hero image set!");
     } catch (error: any) {
-      console.error(error);
-      toast.error("Failed to set hero image");
+      console.error("Set hero image error:", error);
+      toast.error("Please try again later");
     }
   };
 
@@ -612,8 +617,8 @@ export default function AdminDashboard() {
       setAlbums((prev) => prev.map((a) => (a.id === selectedAlbum.id ? { ...a, heroImage: null } : a)));
       toast.success("Hero image removed");
     } catch (error: any) {
-      console.error(error);
-      toast.error("Failed to remove hero image");
+      console.error("Remove hero image error:", error);
+      toast.error("Please try again later");
     }
   };
 
@@ -651,8 +656,8 @@ export default function AdminDashboard() {
       link.click();
       URL.revokeObjectURL(objectUrl);
     } catch (err) {
-      console.error("Download failed", err);
-      toast.error("Download failed");
+      console.error("Download failed:", err);
+      toast.error("Please try again later");
     }
   };
 
@@ -666,11 +671,12 @@ export default function AdminDashboard() {
           url,
         });
       } else {
-        toast.error("Sharing not supported on this device");
+        console.error("Sharing not supported on this device");
+        toast.error("Please try again later");
       }
     } catch (err) {
-      console.error("Share failed", err);
-      toast.error("Share failed");
+      console.error("Share failed:", err);
+      toast.error("Please try again later");
     }
   };
 
@@ -688,8 +694,8 @@ export default function AdminDashboard() {
       link.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("QR download failed", err);
-      toast.error("Failed to download QR");
+      console.error("QR download failed:", err);
+      toast.error("Please try again later");
     }
   };
 
@@ -753,7 +759,8 @@ export default function AdminDashboard() {
 
   const handleUpload = async () => {
     if (!files || !selectedAlbum) {
-      toast.error("Missing Info", { description: "Please select files and an album." });
+      console.error("Upload validation failed: missing files or album");
+      toast.error("Please try again later");
       return;
     }
 
@@ -835,10 +842,9 @@ export default function AdminDashboard() {
         });
 
       } catch (error: any) {
-        console.error(error);
-        toast.error(`Failed: ${file.name}`, {
+        console.error("File upload error:", file.name, error);
+        toast.error("Please try again later", {
           id: toastId,
-          description: error.message,
           icon: <AlertCircle className="h-4 w-4 text-red-500" />,
         });
       }
@@ -847,9 +853,8 @@ export default function AdminDashboard() {
     setIsUploading(false);
     
     if (completedCount === 0) {
-      toast.error("Upload failed", {
-        description: `All ${fileArray.length} file(s) failed to upload.`,
-      });
+      console.error("All uploads failed:", fileArray.length, "files");
+      toast.error("Please try again later");
     } else if (completedCount === fileArray.length) {
       toast.success("Upload complete", {
         description: `Successfully uploaded all ${completedCount} file(s).`,
@@ -892,8 +897,8 @@ export default function AdminDashboard() {
       await auth.signOut();
       toast.success("Signed out!");
     } catch (error: any) {
-      console.error(error);
-      toast.error("Failed to sign out");
+      console.error("Sign out error:", error);
+      toast.error("Please try again later");
     }
   };
 

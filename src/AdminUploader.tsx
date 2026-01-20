@@ -39,7 +39,8 @@ export default function AdminUploader() {
 
   const handleSignIn = async () => {
     if (!signInEmail || !signInPassword) {
-      toast.error("Missing Info", { description: "Please enter email and password." });
+      console.error("Sign in validation failed: missing email or password");
+      toast.error("Please try again later");
       return;
     }
 
@@ -50,28 +51,8 @@ export default function AdminUploader() {
       setSignInPassword("");
       toast.success("Signed in successfully!");
     } catch (error: any) {
-      console.error(error);
-      
-      let errorMessage = "Sign in failed";
-      
-      // Parse Firebase error codes for user-friendly messages
-      if (error.code === "auth/user-not-found") {
-        errorMessage = "User not found";
-      } else if (error.code === "auth/wrong-password") {
-        errorMessage = "Incorrect password";
-      } else if (error.code === "auth/invalid-email") {
-        errorMessage = "Invalid email address";
-      } else if (error.code === "auth/invalid-credential") {
-        errorMessage = "Invalid email or password";
-      } else if (error.code === "auth/user-disabled") {
-        errorMessage = "This account has been disabled";
-      } else if (error.code === "auth/too-many-requests") {
-        errorMessage = "Too many failed attempts. Please try again later.";
-      }
-      
-      toast.error(errorMessage, {
-        description: "Please check your credentials and try again.",
-      });
+      console.error("Sign in error:", error.code, error.message);
+      toast.error("Please try again later");
     } finally {
       setIsSigningIn(false);
     }
@@ -84,14 +65,15 @@ export default function AdminUploader() {
       setFiles(null);
       toast.success("Signed out successfully!");
     } catch (error: any) {
-      console.error(error);
-      toast.error("Sign out failed");
+      console.error("Sign out error:", error);
+      toast.error("Please try again later");
     }
   };
 
   const handleUpload = async () => {
     if (!files || !albumId) {
-      toast.error("Missing Info", { description: "Please select files and an Album ID." });
+      console.error("Upload validation failed: missing files or album ID");
+      toast.error("Please try again later");
       return;
     }
 
@@ -155,10 +137,9 @@ export default function AdminUploader() {
         });
 
       } catch (error: any) {
-        console.error(error);
-        toast.error(`Failed: ${file.name}`, {
+        console.error("File upload error:", file.name, error);
+        toast.error("Please try again later", {
           id: toastId,
-          description: error.message,
           icon: <AlertCircle className="h-4 w-4 text-red-500" />,
         });
       }
@@ -167,9 +148,8 @@ export default function AdminUploader() {
     setIsUploading(false);
     
     if (completedCount === 0) {
-      toast.error("Upload failed", {
-        description: `All ${fileArray.length} file(s) failed to upload. Check your connection and try again.`,
-      });
+      console.error("All uploads failed:", fileArray.length, "files");
+      toast.error("Please try again later");
     } else if (completedCount === fileArray.length) {
       toast.success("Upload complete", {
         description: `Successfully uploaded all ${completedCount} file(s).`,
