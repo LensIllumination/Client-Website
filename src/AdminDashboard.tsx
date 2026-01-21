@@ -1268,7 +1268,7 @@ export default function AdminDashboard() {
         {/* Main Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Albums List */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1" id="albums-management" data-albums-management>
             <Card className="h-[calc(100vh-200px)] flex flex-col">
               <CardHeader className="flex items-center justify-between gap-2">
                 <CardTitle className="text-xl">Albums</CardTitle>

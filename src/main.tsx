@@ -6,6 +6,7 @@ import Contact from './Contact.tsx'
 import Pricing from './Pricing.tsx'
 import PublicAlbums from './PublicAlbums.tsx'
 import Navbar from './components/Navbar.tsx'
+import AdminFab from './components/AdminFab.tsx'
 import Footer from './components/Footer.tsx'
 import AdminDashboard from './AdminDashboard.tsx'
 import AdminSignIn from './AdminSignIn.tsx'
@@ -17,6 +18,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <Navbar />
+      <AdminFab />
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/albums" element={<PublicAlbums />} />

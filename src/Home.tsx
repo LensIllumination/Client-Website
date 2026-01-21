@@ -268,14 +268,36 @@ function Home() {
             <p className="text-muted-foreground max-w-2xl mx-auto">
               Check out my latest photography albums and projects.
             </p>
-            <Button
-              size="lg"
-              onClick={() => navigate("/albums")}
-              className="gap-2"
-            >
-              View All Albums
-              <ArrowRight className="h-4 w-4" />
-            </Button>
+            <div className="flex gap-3 flex-wrap justify-center">
+              <Button
+                size="lg"
+                onClick={() => navigate("/albums")}
+                className="gap-2"
+              >
+                View All Albums
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              {user && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    navigate("/admin");
+                    setTimeout(() => {
+                      const target = document.getElementById("albums-management") || document.querySelector('[data-albums-management]');
+                      if (target) {
+                        const offset = (target as HTMLElement).getBoundingClientRect().top + window.scrollY - 100;
+                        window.scrollTo({ top: offset, behavior: "smooth" });
+                      }
+                    }, 300);
+                  }}
+                  className="gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Manage Albums
+                </Button>
+              )}
+            </div>
           </div>
 
           {loadingAlbums ? (
