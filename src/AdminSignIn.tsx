@@ -20,6 +20,10 @@ export default function AdminSignIn() {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    document.title = "Admin Sign In - Lens Illumination";
+  }, []);
+
   // Monitor auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {

@@ -238,6 +238,10 @@ export default function AdminDashboard() {
   const [newAlbumName, setNewAlbumName] = useState("");
   const [newAlbumPublic, setNewAlbumPublic] = useState(true);
   const [isRenaming, setIsRenaming] = useState<string | null>(null);
+
+  useEffect(() => {
+    document.title = "Admin Dashboard - Lens Illumination";
+  }, []);
   const [renameValue, setRenameValue] = useState("");
   const [files, setFiles] = useState<FileList | null>(null);
   const [isUploading, setIsUploading] = useState(false);

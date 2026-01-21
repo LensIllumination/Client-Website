@@ -26,6 +26,10 @@ export default function Contact() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    document.title = "Contact - Lens Illumination";
+  }, []);
+
+  useEffect(() => {
     const fetchContactInfo = async () => {
       try {
         const contactDoc = await getDoc(doc(db, "settings", "contact"));

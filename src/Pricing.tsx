@@ -21,6 +21,10 @@ export default function Pricing() {
   const { user } = useAuth();
 
   useEffect(() => {
+    document.title = "Pricing - Lens Illumination";
+  }, []);
+
+  useEffect(() => {
     const fetchPricing = async () => {
       try {
         const pricingDoc = await getDoc(doc(db, "settings", "pricing"));

@@ -63,6 +63,10 @@ export function AlbumView() {
 
     loadAlbum(albumId).then((data) => {
       if (data) {
+        document.title = `${data.name} - Lens Illumination`;
+      }
+
+      if (data) {
         setAlbum(data);
       } else {
         setError(true);

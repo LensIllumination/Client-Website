@@ -43,6 +43,10 @@ function Home() {
   const { user } = useAuth();
 
   useEffect(() => {
+    document.title = "Lens Illumination";
+  }, []);
+
+  useEffect(() => {
     const fetchPublicAlbums = async () => {
       try {
         const q = query(collection(db, "albums"), where("isPublic", "==", true));

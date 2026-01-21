@@ -18,7 +18,9 @@ export default function PublicAlbums() {
   const [albums, setAlbums] = useState<PublicAlbum[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-
+  useEffect(() => {
+    document.title = "Albums - Lens Illumination";
+  }, []);
   useEffect(() => {
     const fetchPublicAlbums = async () => {
       try {
