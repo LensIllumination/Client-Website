@@ -67,7 +67,7 @@ export default function PublicAlbums() {
   }, []);
 
   return (
-    <main className="h-screen flex flex-col items-center justify-center bg-background px-4 py-8">
+    <main className="min-h-screen flex flex-col items-center bg-background px-4 py-8 pt-24">
       <div className="max-w-6xl mx-auto w-full">
         
         <div className="mb-8 text-center">

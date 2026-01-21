@@ -52,7 +52,7 @@ export default function Pricing() {
   }
 
   return (
-    <main className="h-screen flex flex-col items-center justify-center bg-background px-4 py-8">
+    <main className="min-h-screen flex flex-col items-center bg-background px-4 py-8 pt-24">
       <div className="max-w-6xl mx-auto w-full">
         <div className="text-center space-y-4 mb-8">
           <h1 className="text-4xl sm:text-5xl font-bold">Pricing</h1>

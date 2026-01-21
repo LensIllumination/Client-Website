@@ -59,7 +59,7 @@ export default function Contact() {
     );
   }
   return (
-    <main className="h-screen flex flex-col items-center justify-center px-4 py-8">
+    <main className="min-h-screen flex flex-col items-center px-4 py-8 pt-24">
       <div className="max-w-4xl mx-auto w-full">
         <div className="text-center mb-8">
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">Get in Touch</h1>
