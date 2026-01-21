@@ -56,7 +56,7 @@ function Navbar() {
               <Button variant="outline" size="sm" asChild>
                 <a href="/">
                   <Home className="h-4 w-4" />
-                  <span className="ml-2">Home</span>
+                  <span className="ml-1">Home</span>
                 </a>
               </Button>
             )}
@@ -64,7 +64,7 @@ function Navbar() {
               <Button variant="outline" size="sm" asChild>
                 <a href="/albums">
                   <Image className="h-4 w-4" />
-                  <span className="ml-2">Albums</span>
+                  <span className="ml-1">Albums</span>
                 </a>
               </Button>
             )}
@@ -72,7 +72,7 @@ function Navbar() {
               <Button variant="outline" size="sm" asChild>
                 <a href="/pricing">
                   <DollarSign className="h-4 w-4" />
-                  <span className="ml-2">Pricing</span>
+                  <span className="ml-1">Pricing</span>
                 </a>
               </Button>
             )}
@@ -80,7 +80,7 @@ function Navbar() {
               <Button variant="outline" size="sm" asChild>
                 <a href="/contact">
                   <Mail className="h-4 w-4" />
-                  <span className="ml-2">Contact</span>
+                  <span className="ml-1">Contact</span>
                 </a>
               </Button>
             )}
@@ -90,7 +90,7 @@ function Navbar() {
               <>
                 <Button size="sm" variant="outline" onClick={() => signOut(auth)}>
                   <LogOut className="h-4 w-4" />
-                  <span className="ml-2">Logout</span>
+                  <span className="ml-1">Logout</span>
                 </Button>
               </>
             ) : (
@@ -98,7 +98,7 @@ function Navbar() {
                 <Button size="sm" variant="default" asChild>
                   <a href="/admin/signin">
                     <LogOut className="h-4 w-4" />
-                    <span className="ml-2">Login</span>
+                    <span className="ml-1">Login</span>
                   </a>
                 </Button>
               </>
@@ -165,7 +165,7 @@ function Navbar() {
               <Button variant="outline" size="sm" asChild>
                 <a href="/contact">
                   <Mail className="h-4 w-4" />
-                  <span className="ml-2">Contact</span>
+                  <span className="ml-1">Contact</span>
                 </a>
               </Button>
             )}
@@ -194,7 +194,7 @@ function Navbar() {
               <Button variant="outline" size="sm" asChild onClick={() => setMobileMenuOpen(false)}>
                 <a href="/" className="justify-start">
                   <Home className="h-4 w-4" />
-                  <span className="ml-2">Home</span>
+                  <span className="ml-1">Home</span>
                 </a>
               </Button>
             )}
@@ -202,7 +202,7 @@ function Navbar() {
               <Button variant="outline" size="sm" asChild onClick={() => setMobileMenuOpen(false)}>
                 <a href="/albums" className="justify-start">
                   <Image className="h-4 w-4" />
-                  <span className="ml-2">Albums</span>
+                  <span className="ml-1">Albums</span>
                 </a>
               </Button>
             )}
@@ -210,7 +210,7 @@ function Navbar() {
               <Button variant="outline" size="sm" asChild onClick={() => setMobileMenuOpen(false)}>
                 <a href="/pricing" className="justify-start">
                   <DollarSign className="h-4 w-4" />
-                  <span className="ml-2">Pricing</span>
+                  <span className="ml-1">Pricing</span>
                 </a>
               </Button>
             )}
@@ -218,7 +218,7 @@ function Navbar() {
               <Button variant="outline" size="sm" asChild onClick={() => setMobileMenuOpen(false)}>
                 <a href="/contact" className="justify-start">
                   <Mail className="h-4 w-4" />
-                  <span className="ml-2">Contact</span>
+                  <span className="ml-1">Contact</span>
                 </a>
               </Button>
             )}
@@ -235,7 +235,7 @@ function Navbar() {
                   className="justify-start"
                 >
                   <LogOut className="h-4 w-4" />
-                  <span className="ml-2">Logout</span>
+                  <span className="ml-1">Logout</span>
                 </Button>
               </>
             ) : (
@@ -243,7 +243,7 @@ function Navbar() {
                 <Button size="sm" variant="default" asChild onClick={() => setMobileMenuOpen(false)}>
                   <a href="/admin/signin" className="justify-start">
                     <LogOut className="h-4 w-4" />
-                    <span className="ml-2">Login</span>
+                    <span className="ml-1">Login</span>
                   </a>
                 </Button>
               </>
@@ -258,7 +258,7 @@ function Navbar() {
               className="justify-start"
             >
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              <span className="ml-2">Toggle Theme</span>
+              <span className="ml-1">Toggle Theme</span>
             </Button>
           </div>
         </div>
