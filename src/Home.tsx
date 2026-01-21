@@ -13,6 +13,7 @@ type PublicAlbum = {
   name: string;
   imagesCount: number;
   createdAt?: any;
+  heroImageUrl?: string;
 };
 
 type PricingItem = {
@@ -47,15 +48,33 @@ function Home() {
         const q = query(collection(db, "albums"), where("isPublic", "==", true));
         const snap = await getDocs(q);
         const list: PublicAlbum[] = [];
-        snap.forEach((doc) => {
+        
+        for (const doc of snap.docs) {
           const data = doc.data();
+          let heroImageUrl: string | undefined;
+          
+          if (data.heroImage) {
+            try {
+              const heroDoc = await getDoc(data.heroImage);
+              if (heroDoc.exists()) {
+                const heroData = (heroDoc.data() as any);
+                const PROXY_URL = "https://b2-proxy.lensillumination.workers.dev";
+                heroImageUrl = `${PROXY_URL}/${heroData["thumbnail-name"] || heroData["file-name"]}`;
+              }
+            } catch (err) {
+              console.error("Failed to load hero image", err);
+            }
+          }
+          
           list.push({
             id: doc.id,
             name: data.name,
             imagesCount: (data.images || []).length,
             createdAt: data.createdAt,
+            heroImageUrl,
           });
-        });
+        }
+        
         const norm = (d: any) => (d?.toMillis ? d.toMillis() : d?.seconds ? d.seconds * 1000 : d || 0);
         list.sort((a, b) => norm(b.createdAt) - norm(a.createdAt));
         setAlbums(list);
@@ -312,8 +331,12 @@ function Home() {
                   className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden flex flex-col"
                   onClick={() => navigate(`/album/${album.id}`)}
                 >
-                  <div className="aspect-video bg-muted flex items-center justify-center">
-                    <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                  <div className="aspect-video bg-muted flex items-center justify-center overflow-hidden">
+                    {album.heroImageUrl ? (
+                      <img src={album.heroImageUrl} alt={album.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <ImageIcon className="h-10 w-10 text-muted-foreground" />
+                    )}
                   </div>
                   <div className="p-4 flex flex-col gap-3 flex-1">
                     <div>

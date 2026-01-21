@@ -30,11 +30,13 @@ export default function PublicAlbums() {
           const data = doc.data();
           let heroImageUrl: string | undefined;
           
-          if (data.heroImageRef) {
+          if (data.heroImage) {
             try {
-              const heroDoc = await getDoc(data.heroImageRef);
+              const heroDoc = await getDoc(data.heroImage);
               if (heroDoc.exists()) {
-                heroImageUrl = (heroDoc.data() as any)?.src;
+                const heroData = (heroDoc.data() as any);
+                const PROXY_URL = "https://b2-proxy.lensillumination.workers.dev";
+                heroImageUrl = `${PROXY_URL}/${heroData["thumbnail-name"] || heroData["file-name"]}`;
               }
             } catch (err) {
               console.error("Failed to load hero image", err);
