@@ -12,16 +12,18 @@ import {
   arrayRemove,
   arrayUnion,
   getDoc,
+  setDoc,
 } from "firebase/firestore";
 import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
+import { loadAlbum } from "@/lib/LoadAlbum";
 
 // shadcn components
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -124,8 +126,8 @@ const ImageCard = memo(({
   };
 
   const imageSrc = useFallback 
-    ? `${WORKER_URL}/${image["file-name"]}`
-    : `${WORKER_URL}/${image["thumbnail-name"] || image["file-name"]}`;
+    ? (image.id.startsWith("debug-") ? image["file-name"] : `${WORKER_URL}/${image["file-name"]}`)
+    : (image.id.startsWith("debug-") ? (image["thumbnail-name"] || image["file-name"]) : `${WORKER_URL}/${image["thumbnail-name"] || image["file-name"]}`);
 
   return (
     <div
@@ -242,9 +244,84 @@ export default function AdminDashboard() {
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [fullscreenImage, setFullscreenImage] = useState<ImageItem | null>(null);
   const [showQRCode, setShowQRCode] = useState(false);
+  const [homeHeroTitle, setHomeHeroTitle] = useState("My photography, beautifully presented.");
+  const [homeHeroSubtitle, setHomeHeroSubtitle] = useState(
+    "Welcome to my photography portfolio. Explore my latest work, browse albums, and get in touch to discuss your project."
+  );
+  const [homeHeroImage, setHomeHeroImage] = useState<string | null>(null);
+  const [heroImageFile, setHeroImageFile] = useState<File | null>(null);
+  const [uploadingHeroImage, setUploadingHeroImage] = useState(false);
+  const [heroUploadProgress, setHeroUploadProgress] = useState(0);
+  const [savingHomeHeader, setSavingHomeHeader] = useState(false);
+  const saveHomeHeader = async () => {
+    setSavingHomeHeader(true);
+    try {
+      const settingsRef = doc(db, "settings", "home");
+      await setDoc(settingsRef, { heroTitle: homeHeroTitle, heroSubtitle: homeHeroSubtitle }, { merge: true });
+      toast.success("Homepage header updated");
+    } catch (error) {
+      console.error("Save home header error:", error);
+      toast.error("Failed to update homepage header");
+    } finally {
+      setSavingHomeHeader(false);
+    }
+  };
+  const uploadHeroImage = async () => {
+    if (!heroImageFile) {
+      toast.error("Choose an image to upload");
+      return;
+    }
+
+    const user = auth.currentUser;
+    if (!user) {
+      toast.error("Please sign in again");
+      return;
+    }
+
+    setUploadingHeroImage(true);
+    setHeroUploadProgress(0);
+    try {
+      const idToken = await user.getIdToken(true);
+      const safeName = heroImageFile.name.replace(/[^a-z0-9.]/gi, "-").toLowerCase();
+      const fileName = `home-hero-${Date.now()}-${safeName}`;
+
+      const res = await fetch(`${WORKER_URL}/${fileName}`, {
+        method: "PUT",
+        body: heroImageFile,
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+          "Content-Type": heroImageFile.type || "application/octet-stream",
+        },
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        const friendlyError = getB2ErrorMessage(res.status, errorText);
+        throw new Error(friendlyError);
+      }
+
+      const imageUrl = `${WORKER_URL}/${fileName}`;
+      await setDoc(
+        doc(db, "settings", "home"),
+        { heroImage: { fileName, url: imageUrl }, heroImageUrl: imageUrl },
+        { merge: true }
+      );
+
+      setHomeHeroImage(imageUrl);
+      setHeroImageFile(null);
+      setHeroUploadProgress(100);
+      toast.success("Hero image updated");
+    } catch (error: any) {
+      console.error("Hero image upload failed:", error);
+      toast.error(error?.message || "Failed to upload hero image");
+    } finally {
+      setUploadingHeroImage(false);
+    }
+  };
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const qrRef = React.useRef<SVGSVGElement | null>(null);
   const navigate = useNavigate();
+  const { albumId } = useParams();
 
   // Monitor auth state
   useEffect(() => {
@@ -261,6 +338,43 @@ export default function AdminDashboard() {
       loadAlbums();
     }
   }, [user]);
+
+  // Load home header settings
+  useEffect(() => {
+    const fetchHomeSettings = async () => {
+      try {
+        const settingsDoc = await getDoc(doc(db, "settings", "home"));
+        if (settingsDoc.exists()) {
+          const data = settingsDoc.data();
+          if (data.heroTitle) setHomeHeroTitle(data.heroTitle);
+          if (data.heroSubtitle) setHomeHeroSubtitle(data.heroSubtitle);
+          if (data.heroImage?.url) setHomeHeroImage(data.heroImage.url);
+          else if (data.heroImageUrl) setHomeHeroImage(data.heroImageUrl);
+        }
+      } catch (error) {
+        console.error("Load home settings error:", error);
+      }
+    };
+    fetchHomeSettings();
+  }, []);
+
+  // Sync selected album with route param
+  useEffect(() => {
+    if (!albums.length) return;
+
+    if (albumId) {
+      const match = albums.find((a) => a.id === albumId);
+      if (match) {
+        if (selectedAlbum?.id !== match.id) setSelectedAlbum(match);
+      } else {
+        // If the route album no longer exists, fall back to the first
+        setSelectedAlbum(albums[0]);
+        navigate(`/admin/${albums[0].id}`, { replace: true });
+      }
+    } else if (!selectedAlbum) {
+      setSelectedAlbum(albums[0]);
+    }
+  }, [albumId, albums, selectedAlbum, navigate]);
 
   // Load album images when the selected album changes (by id),
   // avoid reloading on visibility/name tweaks.
@@ -294,14 +408,38 @@ export default function AdminDashboard() {
   };
 
   const loadAlbumImages = async () => {
-    if (!selectedAlbum || !selectedAlbum.images || selectedAlbum.images.length === 0) {
+    if (!selectedAlbum) {
       setAlbumImages([]);
       setLoadingImages(false);
       return;
     }
-    
+
     setLoadingImages(true);
     try {
+      // Check if this is a debug album
+      if (selectedAlbum.name.toLowerCase() === "debug") {
+        const debugAlbumData = await loadAlbum(selectedAlbum.id);
+        if (debugAlbumData && debugAlbumData.images) {
+          const debugImages = debugAlbumData.images.map((img: any) => ({
+            id: img.id,
+            name: img.title || img.name,
+            "file-name": img.src,
+            "thumbnail-name": img.src,
+            src: img.src,
+            fullSrc: img.fullSrc
+          }));
+          setAlbumImages(debugImages);
+          setLoadingImages(false);
+          return;
+        }
+      }
+
+      if (!selectedAlbum.images || selectedAlbum.images.length === 0) {
+        setAlbumImages([]);
+        setLoadingImages(false);
+        return;
+      }
+      
       const images: ImageItem[] = [];
       
       // Fetch each image document referenced in the album's images array
@@ -928,7 +1066,7 @@ export default function AdminDashboard() {
             className="gap-2"
           >
             <LogOut className="h-4 w-4" />
-            Sign Out
+            Logout
           </Button>
         </div>
 
@@ -984,7 +1122,10 @@ export default function AdminDashboard() {
                     albums.map((album) => (
                       <button
                         key={album.id}
-                        onClick={() => setSelectedAlbum(album)}
+                        onClick={() => {
+                          setSelectedAlbum(album);
+                          navigate(`/admin/${album.id}`);
+                        }}
                         className={`w-full text-left p-3 rounded-lg border flex items-center justify-between ${
                           selectedAlbum?.id === album.id
                             ? "bg-primary text-primary-foreground border-primary"
@@ -1242,6 +1383,114 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+        {/* Homepage Header */}
+        <div className="mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Homepage Header</CardTitle>
+              <CardDescription>Update the hero title and subtitle shown on the homepage.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-2">
+                <Label htmlFor="home-hero-title">Hero Title</Label>
+                <Input
+                  id="home-hero-title"
+                  value={homeHeroTitle}
+                  onChange={(e) => setHomeHeroTitle(e.target.value)}
+                  placeholder="Enter homepage hero title"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="home-hero-subtitle">Hero Subtitle</Label>
+                <Input
+                  id="home-hero-subtitle"
+                  value={homeHeroSubtitle}
+                  onChange={(e) => setHomeHeroSubtitle(e.target.value)}
+                  placeholder="Enter homepage hero subtitle"
+                />
+              </div>
+              <div className="grid gap-3">
+                <Label>Hero Image</Label>
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="w-full sm:w-1/2 border rounded-lg bg-muted/30 aspect-video overflow-hidden flex items-center justify-center">
+                    {homeHeroImage ? (
+                      <img
+                        src={homeHeroImage}
+                        alt="Homepage hero"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-muted-foreground text-sm flex flex-col items-center gap-2 p-4 text-center">
+                        <ImageIcon className="h-8 w-8" />
+                        <span>No hero image set</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-3">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        setHeroImageFile(e.target.files?.[0] || null);
+                        setHeroUploadProgress(0);
+                      }}
+                    />
+                    {heroImageFile && (
+                      <p className="text-sm text-muted-foreground truncate">Selected: {heroImageFile.name}</p>
+                    )}
+                    {uploadingHeroImage && (
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Uploading</span>
+                          <span>{heroUploadProgress}%</span>
+                        </div>
+                        <Progress value={heroUploadProgress} className="h-2" />
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={uploadHeroImage}
+                        disabled={uploadingHeroImage || !heroImageFile}
+                        className="w-full sm:w-auto"
+                      >
+                        {uploadingHeroImage ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <UploadCloud className="mr-2 h-4 w-4" />
+                            Upload Hero Image
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Recommended: wide horizontal image for best fit.</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="justify-end">
+              <Button
+                onClick={saveHomeHeader}
+                disabled={savingHomeHeader || !homeHeroTitle.trim() || !homeHeroSubtitle.trim()}
+                className="min-w-[140px]"
+              >
+                {savingHomeHeader ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Header"
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+
         {/* Fullscreen Image Modal */}
         {fullscreenImage && (
           <div
@@ -1269,7 +1518,12 @@ export default function AdminDashboard() {
                     className="gap-1 text-xs md:text-xs whitespace-nowrap px-3 py-2 md:px-2 md:py-1 h-10 md:h-8"
                     onClick={(e) => {
                       e.stopPropagation();
-                      forceDownload(`${WORKER_URL}/${fullscreenImage["file-name"]}`, fullscreenImage.name);
+                      forceDownload(
+                        fullscreenImage.id.startsWith("debug-") 
+                          ? fullscreenImage["file-name"]
+                          : `${WORKER_URL}/${fullscreenImage["file-name"]}`,
+                        fullscreenImage.name
+                      );
                     }}
                   >
                     <Download className="h-4 w-4 md:h-3 md:w-3" />
@@ -1282,7 +1536,10 @@ export default function AdminDashboard() {
                       className="gap-1 text-xs md:text-xs whitespace-nowrap px-3 py-2 md:px-2 md:py-1 h-10 md:h-8"
                       onClick={(e) => {
                         e.stopPropagation();
-                        forceDownload(`${WORKER_URL}/${fullscreenImage["thumbnail-name"]}`, `thumb-${fullscreenImage.name}`);
+                        const thumbUrl = fullscreenImage.id.startsWith("debug-")
+                          ? (fullscreenImage["thumbnail-name"] || "")
+                          : `${WORKER_URL}/${fullscreenImage["thumbnail-name"] || ""}`;
+                        forceDownload(thumbUrl, `thumb-${fullscreenImage.name}`);
                       }}
                     >
                       <Download className="h-4 w-4 md:h-3 md:w-3" />
@@ -1305,7 +1562,11 @@ export default function AdminDashboard() {
 
               <div className="flex-1 flex items-center justify-center overflow-hidden" onClick={(e) => e.stopPropagation()}>
                 <img
-                  src={`${WORKER_URL}/${fullscreenImage["file-name"]}`}
+                  src={
+                    fullscreenImage.id.startsWith("debug-")
+                      ? fullscreenImage["file-name"]
+                      : `${WORKER_URL}/${fullscreenImage["file-name"]}`
+                  }
                   alt={fullscreenImage.name}
                   className="max-h-full max-w-full object-contain"
                 />

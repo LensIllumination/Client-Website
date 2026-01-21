@@ -1,7 +1,22 @@
-import { Github, Mail } from "lucide-react";
+import { Github, Mail, Home, Image as ImageIcon, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function Footer() {
+  const CopyleftIcon = () => (
+    <svg
+      className="h-4 w-4"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="10" />
+      <path d="M10 8v8M10 16h4" />
+    </svg>
+  );
+
   return (
     <footer className="bg-background">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12">
@@ -17,16 +32,40 @@ export default function Footer() {
           {/* Navigation Links */}
           <div className="flex flex-col gap-3">
             <h4 className="font-semibold">Navigation</h4>
-            <div className="flex flex-col gap-2 text-sm">
-              <a href="/" className="text-muted-foreground hover:text-foreground transition-colors">
-                Home
-              </a>
-              <a href="/albums" className="text-muted-foreground hover:text-foreground transition-colors">
-                Albums
-              </a>
-              <a href="/contact" className="text-muted-foreground hover:text-foreground transition-colors">
-                Contact
-              </a>
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start text-muted-foreground hover:text-foreground w-fit"
+                asChild
+              >
+                <a href="/" className="gap-2 flex">
+                  <Home className="h-4 w-4" />
+                  <span>Home</span>
+                </a>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start text-muted-foreground hover:text-foreground w-fit"
+                asChild
+              >
+                <a href="/albums" className="gap-2 flex">
+                  <ImageIcon className="h-4 w-4" />
+                  <span>Albums</span>
+                </a>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start text-muted-foreground hover:text-foreground w-fit"
+                asChild
+              >
+                <a href="/contact" className="gap-2 flex">
+                  <Phone className="h-4 w-4" />
+                  <span>Contact</span>
+                </a>
+              </Button>
             </div>
           </div>
 
@@ -40,7 +79,7 @@ export default function Footer() {
                 className="justify-start text-muted-foreground hover:text-foreground w-fit"
                 asChild
               >
-                <a href="mailto:contact@lensillumination.com" className="gap-2 flex">
+                <a href="mailto:contect@lensillumination.ca" className="gap-2 flex">
                   <Mail className="h-4 w-4" />
                   <span>Email</span>
                 </a>
@@ -64,17 +103,27 @@ export default function Footer() {
         <div className="border-t border-border pt-8">
           {/* Footer Bottom */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <p>
-              &copy; 2026 Lens Illumination. All rights reserved.
+            <p className="flex items-center gap-1">
+              <CopyleftIcon />
+              <span>2026 Lens Illumination. Licensed under GPL-3.0-only.</span>
+              <a
+                href="/LICENSE.txt"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-foreground hover:underline ml-1 flex items-center gap-1"
+              >
+                View license
+              </a>
             </p>
-            <p>
-              Made by{" "}
+            <p className="flex items-center gap-2">
+              <span>Made by</span>
               <a
                 href="https://github.com/Jquob"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="font-semibold text-foreground hover:underline"
+                className="font-semibold text-foreground hover:underline flex items-center gap-1"
               >
+                <Github className="h-4 w-4" />
                 Jacob Orr
               </a>
             </p>

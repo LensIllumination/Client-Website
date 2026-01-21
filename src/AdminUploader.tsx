@@ -244,7 +244,7 @@ export default function AdminUploader() {
                 className="text-xs sm:text-sm h-8 sm:h-7 justify-start sm:justify-center"
               >
                 <LogOut className="h-3 w-3 mr-1" />
-                Sign Out
+                Logout
               </Button>
             </div>
           </CardHeader>

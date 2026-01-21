@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { db } from "@/firebase";
+import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, Image as ImageIcon } from "lucide-react";
 import { collection, getDocs, query, where } from "firebase/firestore";
@@ -16,6 +17,11 @@ type PublicAlbum = {
 function Home() {
   const [loadingAlbums, setLoadingAlbums] = useState(true);
   const [albums, setAlbums] = useState<PublicAlbum[]>([]);
+  const [heroTitle, setHeroTitle] = useState("My photography, beautifully presented.");
+  const [heroSubtitle, setHeroSubtitle] = useState(
+    "Welcome to my photography portfolio. Explore my latest work, browse albums, and get in touch to discuss your project."
+  );
+  const [heroImage, setHeroImage] = useState("https://picsum.photos/seed/hero/1920/1080");
   const albumsRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -44,6 +50,24 @@ function Home() {
       }
     };
     fetchPublicAlbums();
+  }, []);
+
+  useEffect(() => {
+    const fetchHomeSettings = async () => {
+      try {
+        const settingsDoc = await getDoc(doc(db, "settings", "home"));
+        if (settingsDoc.exists()) {
+          const data = settingsDoc.data();
+          if (data.heroTitle) setHeroTitle(data.heroTitle);
+          if (data.heroSubtitle) setHeroSubtitle(data.heroSubtitle);
+          if (data.heroImage?.url) setHeroImage(data.heroImage.url);
+          else if (data.heroImageUrl) setHeroImage(data.heroImageUrl);
+        }
+      } catch (err) {
+        console.error("Failed to load home settings", err);
+      }
+    };
+    fetchHomeSettings();
   }, []);
 
   const heroCta = useMemo(() => {
@@ -77,7 +101,7 @@ function Home() {
       <div className="mx-auto max-w-7xl px-4 mb-4">
         <div className="relative w-full h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-2xl">
           <img
-            src="https://picsum.photos/seed/hero/1920/1080"
+            src={heroImage}
             alt="Hero"
             className="w-full h-full object-cover"
           />
@@ -86,10 +110,10 @@ function Home() {
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-6 md:p-8">
             <div className="text-center mb-4">
               <h1 className="text-3xl md:text-5xl font-bold text-white drop-shadow-lg">
-                My photography, beautifully presented.
+                {heroTitle}
               </h1>
               <p className="mt-3 text-white/90 text-lg drop-shadow">
-                Welcome to my photography portfolio. Explore my latest work, browse albums, and get in touch to discuss your project.
+                {heroSubtitle}
               </p>
             </div>
             

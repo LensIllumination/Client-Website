@@ -290,8 +290,8 @@ export function AlbumView() {
             <div className="flex justify-center gap-2 flex-wrap">
               <Button
                 variant="secondary"
-                size="sm"
-                className="gap-2 backdrop-blur-sm bg-white/90 hover:bg-white text-slate-900"
+                size="lg"
+                className="gap-2"
                 onClick={handleDownloadAll}
                 disabled={isDownloading || album.images.length === 0}
               >
@@ -300,8 +300,8 @@ export function AlbumView() {
               </Button>
               <Button
                 variant="secondary"
-                size="sm"
-                className="gap-2 backdrop-blur-sm bg-white/90 hover:bg-white text-slate-900"
+                size="lg"
+                className="gap-2"
                 onClick={handleShareAlbum}
               >
                 <Share2 className="h-4 w-4" />
@@ -309,8 +309,8 @@ export function AlbumView() {
               </Button>
               <Button
                 variant="secondary"
-                size="sm"
-                className="gap-2 backdrop-blur-sm bg-white/90 hover:bg-white text-slate-900"
+                size="lg"
+                className="gap-2"
                 onClick={handleCopyAlbumLink}
               >
                 <Copy className="h-4 w-4" />
@@ -319,9 +319,9 @@ export function AlbumView() {
               {user && (
                 <Button
                   variant="secondary"
-                  size="sm"
-                  className="gap-2 backdrop-blur-sm bg-white/90 hover:bg-white text-slate-900"
-                  onClick={() => navigate("/admin")}
+                  size="lg"
+                  className="gap-2"
+                  onClick={() => navigate(albumId ? `/admin/${albumId}` : "/admin")}
                 >
                   <Settings className="h-4 w-4" />
                   Admin Dashboard

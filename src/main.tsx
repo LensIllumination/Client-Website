@@ -22,6 +22,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/contact" element={<Contact />} />
         <Route path="/album/:id" element={<AlbumView/>} />
         <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/admin/:albumId" element={<AdminDashboard />} />
         <Route path="/admin/signin" element={<AdminSignIn />} />
       </Routes>
       <Footer />

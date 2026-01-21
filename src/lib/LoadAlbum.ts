@@ -9,6 +9,27 @@ export const loadAlbum = async (albumId : string) => {
 
   const { name, images: imageRefs, heroImage: heroImageRef } = albumSnap.data();
 
+  // Debug album: fill with lorem.picsum images
+  if (name.toLowerCase() === "debug") {
+    const debugImages = Array.from({ length: 20 }).map((_, i) => ({
+      id: `debug-${i}`,
+      title: `Debug Image ${i + 1}`,
+      src: `https://picsum.photos/400/300?random=${i}`,
+      fullSrc: `https://picsum.photos/1200/900?random=${i}`
+    }));
+
+    return {
+      name: "Debug Album",
+      heroImage: {
+        id: "debug-hero",
+        title: "Debug Hero",
+        src: `https://picsum.photos/1200/600?random=hero`,
+        fullSrc: `https://picsum.photos/1600/800?random=hero`
+      },
+      images: debugImages
+    };
+  }
+
   // Resolve References to actual image data
   const imageDocs = await Promise.all(
     imageRefs.map((ref: DocumentReference<unknown, DocumentData>) => getDoc(ref))
