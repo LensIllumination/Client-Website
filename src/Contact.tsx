@@ -59,9 +59,9 @@ export default function Contact() {
     );
   }
   return (
-    <main className="min-h-screen py-16 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-12">
+    <main className="h-screen flex flex-col items-center justify-center px-4 py-8">
+      <div className="max-w-4xl mx-auto w-full">
+        <div className="text-center mb-8">
           <h1 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">Get in Touch</h1>
           <p className="text-lg text-muted-foreground">
             Have questions? Reach out directly through the options below and I'll get back to you as soon as possible.
@@ -90,7 +90,7 @@ export default function Contact() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Contact Info Cards */}
           <Card className="h-full">
             <CardContent className="h-full flex flex-col items-center justify-center gap-3 text-center py-6">

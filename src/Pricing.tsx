@@ -45,16 +45,16 @@ export default function Pricing() {
 
   if (loading) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
+      <main className="h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="text-center space-y-4 mb-12">
+    <main className="h-screen flex flex-col items-center justify-center bg-background px-4 py-8">
+      <div className="max-w-6xl mx-auto w-full">
+        <div className="text-center space-y-4 mb-8">
           <h1 className="text-4xl sm:text-5xl font-bold">Pricing</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Professional photography packages tailored to your needs
@@ -82,14 +82,14 @@ export default function Pricing() {
         </div>
 
         {pricingItems.length === 0 ? (
-          <div className="text-center py-12">
+          <div className="text-center py-8">
             <p className="text-muted-foreground mb-4">No pricing packages available yet.</p>
             <Button onClick={() => navigate("/contact")}>Contact Me</Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {pricingItems.map((item) => (
-              <Card key={item.id} className="flex flex-col hover:shadow-lg transition-shadow">
+              <Card key={item.id} className="flex flex-col hover:shadow-xl transition-all duration-300 hover:scale-[1.02]">
                 <CardHeader>
                   <CardTitle className="text-2xl">{item.name}</CardTitle>
                   <CardDescription>{item.description}</CardDescription>

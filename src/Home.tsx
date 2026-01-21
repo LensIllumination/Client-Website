@@ -239,7 +239,7 @@ function Home() {
       </div>
 
       {/* About Section */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16" ref={aboutRef}>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-border" ref={aboutRef}>
         <section className="space-y-8">
           <div className="text-center space-y-4 flex flex-col items-center">
             <h2 className="text-3xl font-bold">{aboutTitle}</h2>
@@ -283,7 +283,7 @@ function Home() {
       </div>
 
       {/* Featured Albums Section */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16" ref={albumsRef}>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-border" ref={albumsRef}>
         {/* Public Albums */}
         <section className="space-y-8">
           <div className="text-center space-y-4 flex flex-col items-center">
@@ -332,7 +332,7 @@ function Home() {
               {albums.slice(0, 3).map((album) => (
                 <Card
                   key={album.id}
-                  className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden flex flex-col"
+                  className="cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02] overflow-hidden flex flex-col"
                   onClick={() => navigate(`/album/${album.id}`)}
                 >
                   <div className="aspect-video bg-muted flex items-center justify-center overflow-hidden">
@@ -362,7 +362,7 @@ function Home() {
 
         {/* Pricing Section */}
         {pricingItems.length > 0 && (
-          <section className="space-y-8 mt-16" ref={pricingRef}>
+          <section className="space-y-8 mt-16 pt-16 border-t border-border" ref={pricingRef}>
             <div className="text-center space-y-4 flex flex-col items-center">
               <h2 className="text-3xl font-bold">Pricing</h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
@@ -404,7 +404,7 @@ function Home() {
               {pricingItems.slice(0, 3).map((item) => (
                 <Card
                   key={item.id}
-                  className="flex flex-col hover:shadow-lg transition-shadow overflow-hidden"
+                  className="flex flex-col hover:shadow-xl transition-all duration-300 hover:scale-[1.02] overflow-hidden"
                 >
                   <div className="p-6 flex-1 flex flex-col">
                     <h3 className="text-2xl font-semibold mb-2">{item.name}</h3>

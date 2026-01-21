@@ -13,6 +13,7 @@ import AdminSignIn from './AdminSignIn.tsx'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AlbumView } from './AlbumView.tsx'
 import { Toaster } from 'sonner'
+import NotFound from './NotFound.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -28,6 +29,8 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/:albumId" element={<AdminDashboard />} />
         <Route path="/admin/signin" element={<AdminSignIn />} />
+        <Route path="/404" element={<NotFound />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
       <Footer />
     </BrowserRouter>

@@ -4,7 +4,7 @@ import { db } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon } from "lucide-react";
 
 type PublicAlbum = {
   id: string;
@@ -67,19 +67,10 @@ export default function PublicAlbums() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate("/")}
-          className="gap-2 mb-8"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Home
-        </Button>
+    <main className="h-screen flex flex-col items-center justify-center bg-background px-4 py-8">
+      <div className="max-w-6xl mx-auto w-full">
         
-        <div className="mb-12">
+        <div className="mb-8 text-center">
           <h1 className="text-4xl sm:text-5xl font-bold mb-2">
             Public Albums
           </h1>
@@ -98,7 +89,7 @@ export default function PublicAlbums() {
               <Card
                 key={album.id}
                 onClick={() => navigate(`/album/${album.id}`)}
-                className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden flex flex-col"
+                className="cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02] overflow-hidden flex flex-col"
               >
                 <div className="aspect-video bg-muted flex items-center justify-center overflow-hidden">
                   {album.heroImageUrl ? (

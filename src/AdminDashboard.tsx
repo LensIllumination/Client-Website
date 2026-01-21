@@ -249,6 +249,7 @@ export default function AdminDashboard() {
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [fullscreenImage, setFullscreenImage] = useState<ImageItem | null>(null);
   const [fullscreenImageLoaded, setFullscreenImageLoaded] = useState(false);
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
   const [showQRCode, setShowQRCode] = useState(false);
   const [homeHeroTitle, setHomeHeroTitle] = useState("My photography, beautifully presented.");
   const [homeHeroSubtitle, setHomeHeroSubtitle] = useState(
@@ -258,6 +259,8 @@ export default function AdminDashboard() {
   const [heroImageFile, setHeroImageFile] = useState<File | null>(null);
   const [uploadingHeroImage, setUploadingHeroImage] = useState(false);
   const [heroUploadProgress, setHeroUploadProgress] = useState(0);
+  const [deleteAlbumId, setDeleteAlbumId] = useState<string | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
   const [savingHomeHeader, setSavingHomeHeader] = useState(false);
   
   // Pricing state
@@ -730,7 +733,7 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteAlbum = async (albumId: string) => {
-    if (!confirm("Are you sure you want to delete this album?")) return;
+    setDeleteAlbumId(null);
 
     try {
       const user = auth.currentUser;
@@ -797,7 +800,7 @@ export default function AdminDashboard() {
 
   const handleBulkDelete = async () => {
     if (!selectedAlbum || selectedImages.size === 0) return;
-    if (!confirm(`Are you sure you want to remove ${selectedImages.size} image(s) from the album?`)) return;
+    setShowBulkDeleteConfirm(false);
 
     try {
       const user = auth.currentUser;
@@ -846,15 +849,36 @@ export default function AdminDashboard() {
         await deleteDoc(imageRef);
       }
       
-      // Refresh selected album data
+      // Refresh selected album data and reload images
       const albumDoc = await getDoc(albumRef);
       if (albumDoc.exists()) {
+        const albumData = albumDoc.data();
         setSelectedAlbum({
           id: albumDoc.id,
-          name: albumDoc.data().name,
-          images: albumDoc.data().images || [],
-          createdAt: albumDoc.data().createdAt,
+          name: albumData.name,
+          images: albumData.images || [],
+          createdAt: albumData.createdAt,
+          isPublic: albumData.isPublic,
         });
+        
+        // Directly load the images from the updated album
+        setLoadingImages(true);
+        const images: ImageItem[] = [];
+        for (const imageRef of (albumData.images || [])) {
+          const imageDoc = await getDoc(doc(db, "images", imageRef.id));
+          if (imageDoc.exists()) {
+            images.push({
+              id: imageDoc.id,
+              name: imageDoc.data().name,
+              "file-name": imageDoc.data()["file-name"],
+              "thumbnail-name": imageDoc.data()["thumbnail-name"],
+              uploadedAt: imageDoc.data().uploadedAt,
+              size: imageDoc.data().size,
+            });
+          }
+        }
+        setAlbumImages(images);
+        setLoadingImages(false);
       }
 
       await loadAlbums();
@@ -1103,6 +1127,7 @@ export default function AdminDashboard() {
     }
 
     setIsUploading(true);
+    setUploadModalOpen(false); // Close the dialog when upload starts
     setOverallProgress(0);
     
     const fileArray = Array.from(files);
@@ -1202,30 +1227,72 @@ export default function AdminDashboard() {
       }
       setFiles(null);
       await loadAlbums();
-      // Refresh selected album data
+      // Refresh selected album data and reload images
       const albumDoc = await getDoc(doc(db, "albums", selectedAlbum.id));
       if (albumDoc.exists()) {
+        const albumData = albumDoc.data();
         setSelectedAlbum({
           id: albumDoc.id,
-          name: albumDoc.data().name,
-          images: albumDoc.data().images || [],
-          createdAt: albumDoc.data().createdAt,
+          name: albumData.name,
+          images: albumData.images || [],
+          createdAt: albumData.createdAt,
+          isPublic: albumData.isPublic,
         });
+        
+        // Directly load the images from the updated album
+        setLoadingImages(true);
+        const images: ImageItem[] = [];
+        for (const imageRef of (albumData.images || [])) {
+          const imageDoc = await getDoc(doc(db, "images", imageRef.id));
+          if (imageDoc.exists()) {
+            images.push({
+              id: imageDoc.id,
+              name: imageDoc.data().name,
+              "file-name": imageDoc.data()["file-name"],
+              "thumbnail-name": imageDoc.data()["thumbnail-name"],
+              uploadedAt: imageDoc.data().uploadedAt,
+              size: imageDoc.data().size,
+            });
+          }
+        }
+        setAlbumImages(images);
+        setLoadingImages(false);
       }
     } else {
       toast.warning("Partial upload", {
         description: `Successfully uploaded ${completedCount} of ${fileArray.length} file(s).`,
       });
       await loadAlbums();
-      // Refresh selected album data
+      // Refresh selected album data and reload images
       const albumDoc = await getDoc(doc(db, "albums", selectedAlbum.id));
       if (albumDoc.exists()) {
+        const albumData = albumDoc.data();
         setSelectedAlbum({
           id: albumDoc.id,
-          name: albumDoc.data().name,
-          images: albumDoc.data().images || [],
-          createdAt: albumDoc.data().createdAt,
+          name: albumData.name,
+          images: albumData.images || [],
+          createdAt: albumData.createdAt,
+          isPublic: albumData.isPublic,
         });
+        
+        // Directly load the images from the updated album
+        setLoadingImages(true);
+        const images: ImageItem[] = [];
+        for (const imageRef of (albumData.images || [])) {
+          const imageDoc = await getDoc(doc(db, "images", imageRef.id));
+          if (imageDoc.exists()) {
+            images.push({
+              id: imageDoc.id,
+              name: imageDoc.data().name,
+              "file-name": imageDoc.data()["file-name"],
+              "thumbnail-name": imageDoc.data()["thumbnail-name"],
+              uploadedAt: imageDoc.data().uploadedAt,
+              size: imageDoc.data().size,
+            });
+          }
+        }
+        setAlbumImages(images);
+        setLoadingImages(false);
       }
     }
   };
@@ -1466,7 +1533,7 @@ export default function AdminDashboard() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={() => handleDeleteAlbum(selectedAlbum.id)}
+                          onClick={() => setDeleteAlbumId(selectedAlbum.id)}
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -1555,7 +1622,7 @@ export default function AdminDashboard() {
                         <Button
                           size="sm"
                           variant="destructive"
-                          onClick={handleBulkDelete}
+                          onClick={() => setShowBulkDeleteConfirm(true)}
                           className="ml-4 gap-1"
                           disabled={selectedImages.size === 0}
                         >
@@ -2148,6 +2215,7 @@ export default function AdminDashboard() {
                     if (!fullscreenImage || !albumImages.length) return;
                     const idx = albumImages.findIndex(img => img.id === fullscreenImage.id);
                     if (idx === -1) return;
+                    setSlideDirection('right');
                     setFullscreenImageLoaded(false);
                     if (idx > 0) setFullscreenImage(albumImages[idx - 1]);
                     else setFullscreenImage(albumImages[albumImages.length - 1]);
@@ -2170,10 +2238,16 @@ export default function AdminDashboard() {
                       : `${WORKER_URL}/${fullscreenImage["file-name"]}`
                   }
                   alt={fullscreenImage.name}
-                  className={`max-h-full max-w-full object-contain transition-opacity duration-500 ${
+                  className={`max-h-full max-w-full object-contain transition-all duration-500 ${
                     fullscreenImageLoaded ? 'opacity-100' : 'opacity-0'
+                  } ${
+                    slideDirection === 'left' ? 'animate-[slideInLeft_0.4s_ease-out]' :
+                    slideDirection === 'right' ? 'animate-[slideInRight_0.4s_ease-out]' : ''
                   }`}
-                  onLoad={() => setFullscreenImageLoaded(true)}
+                  onLoad={() => {
+                    setFullscreenImageLoaded(true);
+                    setTimeout(() => setSlideDirection(null), 400);
+                  }}
                 />
                 {/* Right Arrow */}
                 <button
@@ -2184,6 +2258,7 @@ export default function AdminDashboard() {
                     if (!fullscreenImage || !albumImages.length) return;
                     const idx = albumImages.findIndex(img => img.id === fullscreenImage.id);
                     if (idx === -1) return;
+                    setSlideDirection('left');
                     setFullscreenImageLoaded(false);
                     if (idx < albumImages.length - 1) setFullscreenImage(albumImages[idx + 1]);
                     else setFullscreenImage(albumImages[0]);
@@ -2255,6 +2330,52 @@ export default function AdminDashboard() {
             </Card>
           </div>
         )}
+
+        {/* Delete Album Confirmation Dialog */}
+        <Dialog open={deleteAlbumId !== null} onOpenChange={(open) => !open && setDeleteAlbumId(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Album</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this album? This will permanently delete the album and all its images. This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setDeleteAlbumId(null)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={() => deleteAlbumId && handleDeleteAlbum(deleteAlbumId)}
+              >
+                Delete Album
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Bulk Delete Confirmation Dialog */}
+        <Dialog open={showBulkDeleteConfirm} onOpenChange={setShowBulkDeleteConfirm}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Images</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to remove {selectedImages.size} image{selectedImages.size > 1 ? 's' : ''} from the album? This will permanently delete the selected images. This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setShowBulkDeleteConfirm(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleBulkDelete}
+              >
+                Delete {selectedImages.size} Image{selectedImages.size > 1 ? 's' : ''}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

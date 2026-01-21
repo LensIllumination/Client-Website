@@ -6,7 +6,7 @@ import GalleryImage from "@/components/GalleryImage";
 import { auth } from "@/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import type { User } from "firebase/auth";
-import { X, Settings, Download, Share2, Copy, ArrowUp, Loader2 } from "lucide-react";
+import { X, Settings, Download, Share2, Copy, ArrowUp, Loader2, Image as ImageIcon } from "lucide-react";
 import JSZip from "jszip";
 import { toast } from "sonner";
 import ImageErrorPanel from "@/components/ImageErrorPanel";
@@ -20,11 +20,11 @@ interface Album {
 export function AlbumView() {
   const { id: albumId } = useParams<{ id: string }>();
   const [album, setAlbum] = useState<Album | null>(null);
-  const [error, setError] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [fullscreenImage, setFullscreenImage] = useState<{ id: string; src: string; fullSrc: string; title: string } | null>(null);
   const [fullscreenLoadError, setFullscreenLoadError] = useState(false);
   const [fullscreenImageLoaded, setFullscreenImageLoaded] = useState(false);
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const [imageSizes, setImageSizes] = useState<Map<string, string>>(new Map());
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -69,10 +69,11 @@ export function AlbumView() {
       if (data) {
         setAlbum(data);
       } else {
-        setError(true);
+        // Album not found, redirect to 404
+        navigate("/404", { replace: true });
       }
     });
-  }, [albumId]);
+  }, [albumId, navigate]);
 
   useEffect(() => {
     // Reset error when a new image is opened in fullscreen
@@ -257,42 +258,40 @@ export function AlbumView() {
      }
    };
 
-  if (error) return <div className="p-10 text-center">Album not found.</div>;
   if (!album) return <div className="p-10 text-center animate-pulse">Loading gallery...</div>;
 
   return (
     <main className="min-h-screen pt-2 pb-8">
       {/* Hero Image Section with Overlay */}
       <div className="mx-auto max-w-7xl px-4 mb-4">
-        <div className="relative w-full h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-2xl">
+        <div className="relative w-full h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-2xl bg-muted">
           {/* Hero Image */}
           {album.heroImage ? (
             <div 
               className="cursor-pointer w-full h-full"
               onClick={() => setFullscreenImage(album.heroImage!)}
             >
-              <GalleryImage
-                src={album.heroImage.src}
+              <img
+                src={album.heroImage.fullSrc}
                 alt={album.heroImage.title}
+                className="w-full h-full object-cover rounded-xl"
                 onClick={() => setFullscreenImage(album.heroImage!)}
               />
             </div>
           ) : (
-            <img
-              src="https://picsum.photos/seed/hero/1920/1080"
-              alt="Hero placeholder"
-              className="w-full h-full object-cover"
-            />
+            <div className="w-full h-full bg-muted flex items-center justify-center">
+              <ImageIcon className="h-24 w-24 text-muted-foreground" />
+            </div>
           )}
           
           {/* Overlay with Album Info */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-6 md:p-8">
+          <div className="absolute inset-0 dark:bg-gradient-to-t dark:from-background dark:from-0% dark:via-background/70 dark:via-20% dark:to-transparent dark:to-40% flex flex-col justify-end p-6 md:p-8 pointer-events-none">
             <div className="text-center mb-4">
-              <h1 className="text-3xl md:text-5xl font-bold text-white drop-shadow-lg">{album.name}</h1>
-              <p className="mt-2 text-white/90 text-lg">{album.images.length} Photos</p>
+              <h1 className="text-3xl md:text-5xl font-bold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">{album.name}</h1>
+              <p className="mt-2 text-white/90 text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{album.images.length} Photos</p>
             </div>
             
-            <div className="flex justify-center gap-2 flex-wrap">
+            <div className="flex justify-center gap-2 flex-wrap pointer-events-auto">
               <Button
                 variant="secondary"
                 size="lg"
@@ -426,6 +425,7 @@ export function AlbumView() {
                   e.stopPropagation();
                   if (!fullscreenImage || !album) return;
                   const idx = album.images.findIndex(img => img.id === fullscreenImage.id);
+                  setSlideDirection('right');
                   setFullscreenLoadError(false);
                   setFullscreenImageLoaded(false);
                   if (idx > 0) setFullscreenImage(album.images[idx - 1]);
@@ -450,10 +450,16 @@ export function AlbumView() {
                     key={fullscreenImage!.fullSrc}
                     src={fullscreenImage!.fullSrc}
                     alt={fullscreenImage!.title}
-                    className={`max-h-full max-w-full object-contain transition-opacity duration-500 ${
+                    className={`max-h-full max-w-full object-contain transition-all duration-500 ${
                       fullscreenImageLoaded ? 'opacity-100' : 'opacity-0'
+                    } ${
+                      slideDirection === 'left' ? 'animate-[slideInLeft_0.4s_ease-out]' :
+                      slideDirection === 'right' ? 'animate-[slideInRight_0.4s_ease-out]' : ''
                     }`}
-                    onLoad={() => setFullscreenImageLoaded(true)}
+                    onLoad={() => {
+                      setFullscreenImageLoaded(true);
+                      setTimeout(() => setSlideDirection(null), 400);
+                    }}
                     onError={(e) => {
                       console.error("Fullscreen image load error:", fullscreenImage?.fullSrc, e);
                       setFullscreenLoadError(true);
@@ -470,6 +476,7 @@ export function AlbumView() {
                   e.stopPropagation();
                   if (!fullscreenImage || !album) return;
                   const idx = album.images.findIndex(img => img.id === fullscreenImage.id);
+                  setSlideDirection('left');
                   setFullscreenLoadError(false);
                   setFullscreenImageLoaded(false);
                   if (idx < album.images.length - 1) setFullscreenImage(album.images[idx + 1]);
