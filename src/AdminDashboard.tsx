@@ -26,6 +26,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import {
   Loader2,
   LogOut,
@@ -141,7 +142,7 @@ const ImageCard = memo(({
           type="checkbox"
           checked={isSelected}
           onChange={() => onToggleSelection(image.id)}
-          className="h-6 w-6 md:h-5 md:w-5 cursor-pointer"
+          className="h-6 w-6 md:h-5 md:w-5 cursor-pointer rounded border border-muted-foreground/50 accent-primary focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/60 transition"
           onClick={(e) => e.stopPropagation()}
         />
       </div>
@@ -253,6 +254,28 @@ export default function AdminDashboard() {
   const [uploadingHeroImage, setUploadingHeroImage] = useState(false);
   const [heroUploadProgress, setHeroUploadProgress] = useState(0);
   const [savingHomeHeader, setSavingHomeHeader] = useState(false);
+  
+  // Pricing state
+  const [pricingItems, setPricingItems] = useState<Array<{id: string, name: string, description: string, price: string}>>([]);
+  const [newPricingItem, setNewPricingItem] = useState({ name: "", description: "", price: "" });
+  const [editingPricingId, setEditingPricingId] = useState<string | null>(null);
+  const [editPricingValue, setEditPricingValue] = useState({ name: "", description: "", price: "" });
+  const [savingPricing, setSavingPricing] = useState(false);
+  
+  // Contact state
+  const [contactInfo, setContactInfo] = useState({ email: "", phone: "", location: "", instagram: "" });
+  const [savingContact, setSavingContact] = useState(false);
+  
+  // About state
+  const [aboutTitle, setAboutTitle] = useState("About Us");
+  const [aboutContent, setAboutContent] = useState("");
+  const [savingAbout, setSavingAbout] = useState(false);
+  
+  // Upload modal state
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  // Create album modal state
+  const [createAlbumOpen, setCreateAlbumOpen] = useState(false);
+  
   const saveHomeHeader = async () => {
     setSavingHomeHeader(true);
     try {
@@ -318,6 +341,162 @@ export default function AdminDashboard() {
       setUploadingHeroImage(false);
     }
   };
+  
+  // Pricing handlers
+  const loadPricingItems = async () => {
+    try {
+      const pricingDoc = await getDoc(doc(db, "settings", "pricing"));
+      if (pricingDoc.exists()) {
+        const data = pricingDoc.data();
+        setPricingItems(data.items || []);
+      } else {
+        setPricingItems([]);
+      }
+    } catch (error) {
+      console.error("Load pricing error:", error);
+      toast.error("Failed to load pricing items");
+    }
+  };
+
+  const handleAddPricingItem = async () => {
+    if (!newPricingItem.name.trim() || !newPricingItem.price.trim()) {
+      toast.error("Name and price are required");
+      return;
+    }
+
+    setSavingPricing(true);
+    try {
+      const newItem = {
+        id: `price-${Date.now()}`,
+        name: newPricingItem.name,
+        description: newPricingItem.description,
+        price: newPricingItem.price,
+      };
+      const updatedItems = [...pricingItems, newItem];
+      
+      await setDoc(doc(db, "settings", "pricing"), { items: updatedItems }, { merge: true });
+      
+      setPricingItems(updatedItems);
+      setNewPricingItem({ name: "", description: "", price: "" });
+      toast.success("Pricing item added");
+    } catch (error) {
+      console.error("Add pricing error:", error);
+      toast.error("Failed to add pricing item");
+    } finally {
+      setSavingPricing(false);
+    }
+  };
+
+  const handleUpdatePricingItem = async (id: string) => {
+    if (!editPricingValue.name.trim() || !editPricingValue.price.trim()) {
+      toast.error("Name and price are required");
+      return;
+    }
+
+    setSavingPricing(true);
+    try {
+      const updatedItems = pricingItems.map(item =>
+        item.id === id ? { ...item, ...editPricingValue } : item
+      );
+      
+      await setDoc(doc(db, "settings", "pricing"), { items: updatedItems }, { merge: true });
+      
+      setPricingItems(updatedItems);
+      setEditingPricingId(null);
+      toast.success("Pricing item updated");
+    } catch (error) {
+      console.error("Update pricing error:", error);
+      toast.error("Failed to update pricing item");
+    } finally {
+      setSavingPricing(false);
+    }
+  };
+
+  const handleDeletePricingItem = async (id: string) => {
+    setSavingPricing(true);
+    try {
+      const updatedItems = pricingItems.filter(item => item.id !== id);
+      
+      await setDoc(doc(db, "settings", "pricing"), { items: updatedItems }, { merge: true });
+      
+      setPricingItems(updatedItems);
+      toast.success("Pricing item deleted");
+    } catch (error) {
+      console.error("Delete pricing error:", error);
+      toast.error("Failed to delete pricing item");
+    } finally {
+      setSavingPricing(false);
+    }
+  };
+
+  // Contact handlers
+  const loadContactInfo = async () => {
+    try {
+      const contactDoc = await getDoc(doc(db, "settings", "contact"));
+      if (contactDoc.exists()) {
+        const data = contactDoc.data();
+        setContactInfo({
+          email: data.email || "",
+          phone: data.phone || "",
+          location: data.location || "",
+          instagram: data.instagram || "",
+        });
+      }
+    } catch (error) {
+      console.error("Load contact error:", error);
+    }
+  };
+
+  const handleSaveContact = async () => {
+    if (!contactInfo.email.trim()) {
+      toast.error("Email is required");
+      return;
+    }
+
+    setSavingContact(true);
+    try {
+      await setDoc(doc(db, "settings", "contact"), contactInfo, { merge: true });
+      toast.success("Contact information updated");
+    } catch (error) {
+      console.error("Save contact error:", error);
+      toast.error("Failed to update contact information");
+    } finally {
+      setSavingContact(false);
+    }
+  };
+
+  // About handlers
+  const loadAboutInfo = async () => {
+    try {
+      const aboutDoc = await getDoc(doc(db, "settings", "about"));
+      if (aboutDoc.exists()) {
+        const data = aboutDoc.data();
+        setAboutTitle(data.title || "About Us");
+        setAboutContent(data.content || "");
+      }
+    } catch (error) {
+      console.error("Load about error:", error);
+    }
+  };
+
+  const handleSaveAbout = async () => {
+    if (!aboutTitle.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+
+    setSavingAbout(true);
+    try {
+      await setDoc(doc(db, "settings", "about"), { title: aboutTitle, content: aboutContent }, { merge: true });
+      toast.success("About information updated");
+    } catch (error) {
+      console.error("Save about error:", error);
+      toast.error("Failed to update about information");
+    } finally {
+      setSavingAbout(false);
+    }
+  };
+
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const qrRef = React.useRef<SVGSVGElement | null>(null);
   const navigate = useNavigate();
@@ -356,6 +535,21 @@ export default function AdminDashboard() {
       }
     };
     fetchHomeSettings();
+  }, []);
+
+  // Load pricing items
+  useEffect(() => {
+    loadPricingItems();
+  }, []);
+
+  // Load contact info
+  useEffect(() => {
+    loadContactInfo();
+  }, []);
+
+  // Load about info
+  useEffect(() => {
+    loadAboutInfo();
   }, []);
 
   // Sync selected album with route param
@@ -483,6 +677,7 @@ export default function AdminDashboard() {
       });
       setNewAlbumName("");
       setNewAlbumPublic(true);
+      setCreateAlbumOpen(false);
       loadAlbums();
       toast.success(`Album "${newAlbumName}" created!`);
     } catch (error: any) {
@@ -1074,46 +1269,73 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Albums List */}
           <div className="lg:col-span-1">
-            <Card>
-              <CardHeader>
+            <Card className="h-[calc(100vh-200px)] flex flex-col">
+              <CardHeader className="flex items-center justify-between gap-2">
                 <CardTitle className="text-xl">Albums</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {/* Create New Album */}
-                <div className="space-y-2 pb-3 border-b">
-                  <Label htmlFor="newAlbum" className="text-sm">
-                    Create Album
-                  </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="newAlbum"
-                      placeholder="Album name"
-                      value={newAlbumName}
-                      onChange={(e) => setNewAlbumName(e.target.value)}
-                      disabled={isCreatingAlbum}
-                      className="text-sm"
-                    />
-                    <Button
-                      size="sm"
-                      onClick={handleCreateAlbum}
-                      disabled={isCreatingAlbum || !newAlbumName.trim()}
-                    >
+                <Dialog open={createAlbumOpen} onOpenChange={setCreateAlbumOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="sm" className="gap-2" disabled={isCreatingAlbum}>
                       <Plus className="h-4 w-4" />
+                      New Album
                     </Button>
-                  </div>
-                  <div className="flex items-center gap-2 pt-1 text-sm">
-                    <Switch
-                      checked={newAlbumPublic}
-                      onCheckedChange={setNewAlbumPublic}
-                      disabled={isCreatingAlbum}
-                      ariaLabel="Toggle public album"
-                    />
-                    <Label htmlFor="newAlbumPublic" className="text-sm">Public album</Label>
-                  </div>
-                </div>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[480px]">
+                    <DialogHeader>
+                      <DialogTitle>Create Album</DialogTitle>
+                      <DialogDescription>
+                        Create a new album to organize your images.
+                      </DialogDescription>
+                    </DialogHeader>
 
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="newAlbum">Album name</Label>
+                        <Input
+                          id="newAlbum"
+                          placeholder="Album name"
+                          value={newAlbumName}
+                          onChange={(e) => setNewAlbumName(e.target.value)}
+                          disabled={isCreatingAlbum}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={newAlbumPublic}
+                          onCheckedChange={setNewAlbumPublic}
+                          disabled={isCreatingAlbum}
+                          ariaLabel="Toggle public album"
+                        />
+                        <div className="space-y-0">
+                          <p className="text-sm font-medium">Public album</p>
+                          <p className="text-xs text-muted-foreground">Visible to anyone with the link.</p>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button
+                          variant="outline"
+                          onClick={() => setCreateAlbumOpen(false)}
+                          disabled={isCreatingAlbum}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleCreateAlbum}
+                          disabled={isCreatingAlbum || !newAlbumName.trim()}
+                          className="gap-2"
+                        >
+                          {isCreatingAlbum && <Loader2 className="h-4 w-4 animate-spin" />}
+                          Create
+                        </Button>
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent className="space-y-3 flex-1 flex flex-col overflow-hidden">
                 {/* Albums List */}
-                <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                <div className="space-y-2 overflow-y-auto flex-1">
                   {albums.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4 text-center">
                       No albums yet
@@ -1122,10 +1344,7 @@ export default function AdminDashboard() {
                     albums.map((album) => (
                       <button
                         key={album.id}
-                        onClick={() => {
-                          setSelectedAlbum(album);
-                          navigate(`/admin/${album.id}`);
-                        }}
+                        onClick={() => navigate(`/admin/${album.id}`)}
                         className={`w-full text-left p-3 rounded-lg border flex items-center justify-between ${
                           selectedAlbum?.id === album.id
                             ? "bg-primary text-primary-foreground border-primary"
@@ -1153,8 +1372,8 @@ export default function AdminDashboard() {
           {/* Album Details & Images */}
           <div className="lg:col-span-2">
             {selectedAlbum ? (
-              <Card>
-                <CardHeader>
+              <Card className="h-[calc(100vh-200px)] flex flex-col">
+                <CardHeader className="flex-shrink-0">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       {isRenaming === selectedAlbum.id ? (
@@ -1250,60 +1469,97 @@ export default function AdminDashboard() {
                     )}
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Upload Section */}
-                  <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
-                    <div className="flex items-center gap-2 mb-2">
-                      <UploadCloud className="h-5 w-5 text-primary" />
-                      <h3 className="font-semibold">Upload Images</h3>
-                    </div>
-                    
-                    <div className="space-y-3">
-                      <div className="space-y-2">
-                        <Label htmlFor="pictures" className="text-sm">Select Photos</Label>
-                        <Input 
-                          ref={fileInputRef}
-                          id="pictures"
-                          type="file" 
-                          multiple 
-                          accept="image/*"
-                          onChange={(e) => setFiles(e.currentTarget.files)} 
-                          disabled={isUploading}
-                          className="file:text-primary file:font-semibold cursor-pointer text-base"
-                        />
-                      </div>
+                <CardContent className="space-y-6 overflow-y-auto flex-1">
+                  {/* Sticky Header - Upload & Bulk Actions */}
+                  {albumImages.length > 0 && (
+                    <div className="sticky top-0 z-10 p-2 mb-4 flex items-center justify-between gap-2">
+                      {/* Upload Button */}
+                      <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
+                        <DialogTrigger asChild>
+                          <Button size="sm" className="gap-2">
+                            <UploadCloud className="h-4 w-4" />
+                            Upload
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Upload Images</DialogTitle>
+                            <DialogDescription>
+                              Upload images to {selectedAlbum?.name}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="pictures" className="text-sm">Select Photos</Label>
+                              <Input 
+                                ref={fileInputRef}
+                                id="pictures"
+                                type="file" 
+                                multiple 
+                                accept="image/*"
+                                onChange={(e) => setFiles(e.currentTarget.files)} 
+                                disabled={isUploading}
+                                className="file:text-primary file:font-semibold cursor-pointer text-base"
+                              />
+                            </div>
 
-                      {isUploading && (
-                        <div className="space-y-2 pt-2">
-                          <div className="flex justify-between text-xs font-medium text-muted-foreground">
-                            <span>Upload Progress</span>
-                            <span>{Math.round(overallProgress)}%</span>
+                            {isUploading && (
+                              <div className="space-y-2 pt-2">
+                                <div className="flex justify-between text-xs font-medium text-muted-foreground">
+                                  <span>Upload Progress</span>
+                                  <span>{Math.round(overallProgress)}%</span>
+                                </div>
+                                <Progress value={overallProgress} className="h-2 w-full" />
+                              </div>
+                            )}
+
+                            <Button 
+                              onClick={handleUpload} 
+                              disabled={isUploading || !files} 
+                              className="w-full font-bold"
+                            >
+                              {isUploading ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Processing Queue...
+                                </>
+                              ) : (
+                                <>
+                                  <UploadCloud className="mr-2 h-4 w-4" />
+                                  Upload Files
+                                </>
+                              )}
+                            </Button>
                           </div>
-                          <Progress value={overallProgress} className="h-2 w-full" />
-                        </div>
-                      )}
+                        </DialogContent>
+                      </Dialog>
 
-                      <Button 
-                        onClick={handleUpload} 
-                        disabled={isUploading || !files} 
-                        className="w-full font-bold"
-                      >
-                        {isUploading ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing Queue...
-                          </>
-                        ) : (
-                          <>
-                            <UploadCloud className="mr-2 h-4 w-4" />
-                            Upload to {selectedAlbum.name}
-                          </>
-                        )}
-                      </Button>
+                      {/* Bulk Actions */}
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedImages.size === albumImages.length && albumImages.length > 0}
+                          onChange={selectAllImages}
+                          className="h-4 w-4 cursor-pointer rounded border border-muted-foreground/50 accent-primary focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/60 transition"
+                        />
+                        <span className="text-xs font-medium">
+                          {selectedImages.size > 0
+                            ? `${selectedImages.size} selected`
+                            : "Select all"}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={handleBulkDelete}
+                          className="ml-4 gap-1"
+                          disabled={selectedImages.size === 0}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Delete
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-
-                  {/* Images Section */}
+                  )}
                   {loadingImages ? (
                     <div className="text-center py-12">
                       <Loader2 className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4 animate-spin" />
@@ -1312,44 +1568,78 @@ export default function AdminDashboard() {
                       </p>
                     </div>
                   ) : albumImages.length === 0 ? (
-                    <div className="text-center py-12">
-                      <ImageIcon className="h-12 w-12 mx-auto text-muted-foreground/40 mb-4" />
-                      <p className="text-muted-foreground">
-                        No images in this album yet
-                      </p>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Upload images using the form above
-                      </p>
+                    <div className="h-full flex flex-col items-center justify-center gap-6">
+                      <ImageIcon className="h-12 w-12 text-muted-foreground/40" />
+                      <div className="text-center space-y-2">
+                        <p className="text-muted-foreground text-lg font-medium">
+                          No images in this album yet
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Click the button below to upload
+                        </p>
+                      </div>
+                      <Dialog open={uploadModalOpen} onOpenChange={setUploadModalOpen}>
+                        <DialogTrigger asChild>
+                          <Button className="gap-2">
+                            <UploadCloud className="h-4 w-4" />
+                            Upload Images
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md">
+                          <DialogHeader>
+                            <DialogTitle>Upload Images</DialogTitle>
+                            <DialogDescription>
+                              Upload images to {selectedAlbum?.name}
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <div className="space-y-2">
+                              <Label htmlFor="pictures" className="text-sm">Select Photos</Label>
+                              <Input 
+                                ref={fileInputRef}
+                                id="pictures"
+                                type="file" 
+                                multiple 
+                                accept="image/*"
+                                onChange={(e) => setFiles(e.currentTarget.files)} 
+                                disabled={isUploading}
+                                className="file:text-primary file:font-semibold cursor-pointer text-base"
+                              />
+                            </div>
+
+                            {isUploading && (
+                              <div className="space-y-2 pt-2">
+                                <div className="flex justify-between text-xs font-medium text-muted-foreground">
+                                  <span>Upload Progress</span>
+                                  <span>{Math.round(overallProgress)}%</span>
+                                </div>
+                                <Progress value={overallProgress} className="h-2 w-full" />
+                              </div>
+                            )}
+
+                            <Button 
+                              onClick={handleUpload} 
+                              disabled={isUploading || !files} 
+                              className="w-full font-bold"
+                            >
+                              {isUploading ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  Processing Queue...
+                                </>
+                              ) : (
+                                <>
+                                  <UploadCloud className="mr-2 h-4 w-4" />
+                                  Upload Files
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   ) : (
                     <>
-                      {/* Bulk Actions Bar */}
-                      <div className="flex items-center justify-between gap-3 p-3 border rounded-lg bg-muted/30">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={selectedImages.size === albumImages.length && albumImages.length > 0}
-                            onChange={selectAllImages}
-                            className="h-4 w-4 cursor-pointer"
-                          />
-                          <span className="text-sm font-medium">
-                            {selectedImages.size > 0
-                              ? `${selectedImages.size} selected`
-                              : "Select all"}
-                          </span>
-                        </div>
-                        {selectedImages.size > 0 && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={handleBulkDelete}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete Selected
-                          </Button>
-                        )}
-                      </div>
-
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {albumImages.map((image) => {
                           const imageRef = selectedAlbum.images?.find((ref: any) => ref.id === image.id);
@@ -1384,7 +1674,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Homepage Header */}
-        <div className="mt-8">
+        <div className="mt-8" id="homepage-header" data-homepage-header>
           <Card>
             <CardHeader>
               <CardTitle>Homepage Header</CardTitle>
@@ -1485,6 +1775,288 @@ export default function AdminDashboard() {
                   </>
                 ) : (
                   "Save Header"
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+
+        {/* Pricing Management */}
+        <div className="mt-8" data-pricing-management>
+          <Card>
+            <CardHeader>
+              <CardTitle>Pricing Management</CardTitle>
+              <CardDescription>Manage pricing packages shown on the pricing page and homepage.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Add New Pricing Item */}
+              <div className="border rounded-lg p-4 bg-muted/30 space-y-4">
+                <h3 className="font-semibold text-sm">Add New Pricing Package</h3>
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="pricing-name">Package Name</Label>
+                    <Input
+                      id="pricing-name"
+                      value={newPricingItem.name}
+                      onChange={(e) => setNewPricingItem({ ...newPricingItem, name: e.target.value })}
+                      placeholder="e.g., Portrait Session"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="pricing-description">Description</Label>
+                    <Input
+                      id="pricing-description"
+                      value={newPricingItem.description}
+                      onChange={(e) => setNewPricingItem({ ...newPricingItem, description: e.target.value })}
+                      placeholder="Brief description of the package"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="pricing-price">Price</Label>
+                    <Input
+                      id="pricing-price"
+                      value={newPricingItem.price}
+                      onChange={(e) => setNewPricingItem({ ...newPricingItem, price: e.target.value })}
+                      placeholder="e.g., $299"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleAddPricingItem}
+                    disabled={savingPricing || !newPricingItem.name.trim() || !newPricingItem.price.trim()}
+                    className="w-full sm:w-auto"
+                  >
+                    {savingPricing ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Adding...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Package
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Existing Pricing Items */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-sm">Current Pricing Packages</h3>
+                {pricingItems.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center border rounded-lg">
+                    No pricing packages yet. Add one above.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {pricingItems.map((item) => (
+                      <div key={item.id} className="border rounded-lg p-4 space-y-3">
+                        {editingPricingId === item.id ? (
+                          <>
+                            <div className="grid gap-3">
+                              <div className="grid gap-2">
+                                <Label>Package Name</Label>
+                                <Input
+                                  value={editPricingValue.name}
+                                  onChange={(e) => setEditPricingValue({ ...editPricingValue, name: e.target.value })}
+                                />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Description</Label>
+                                <Input
+                                  value={editPricingValue.description}
+                                  onChange={(e) => setEditPricingValue({ ...editPricingValue, description: e.target.value })}
+                                />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label>Price</Label>
+                                <Input
+                                  value={editPricingValue.price}
+                                  onChange={(e) => setEditPricingValue({ ...editPricingValue, price: e.target.value })}
+                                />
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleUpdatePricingItem(item.id)}
+                                disabled={savingPricing}
+                              >
+                                {savingPricing ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Saving...
+                                  </>
+                                ) : (
+                                  "Save"
+                                )}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setEditingPricingId(null)}
+                                disabled={savingPricing}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="space-y-1">
+                              <div className="flex items-start justify-between">
+                                <div className="space-y-1 flex-1">
+                                  <h4 className="font-semibold">{item.name}</h4>
+                                  {item.description && (
+                                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                                  )}
+                                  <p className="text-lg font-bold text-primary">{item.price}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setEditingPricingId(item.id);
+                                      setEditPricingValue({ name: item.name, description: item.description, price: item.price });
+                                    }}
+                                    disabled={savingPricing}
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => handleDeletePricingItem(item.id)}
+                                    disabled={savingPricing}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Contact Information */}
+        <div className="mt-8" id="contact-info" data-contact-info>
+          <Card>
+            <CardHeader>
+              <CardTitle>Contact Information</CardTitle>
+              <CardDescription>Update the contact details shown on the contact page.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="contact-email">Email</Label>
+                  <Input
+                    id="contact-email"
+                    type="email"
+                    value={contactInfo.email}
+                    onChange={(e) => setContactInfo({ ...contactInfo, email: e.target.value })}
+                    placeholder="contact@example.com"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="contact-phone">Phone</Label>
+                  <Input
+                    id="contact-phone"
+                    type="tel"
+                    value={contactInfo.phone}
+                    onChange={(e) => setContactInfo({ ...contactInfo, phone: e.target.value })}
+                    placeholder="+1 (555) 123-4567"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="contact-location">Location</Label>
+                  <Input
+                    id="contact-location"
+                    value={contactInfo.location}
+                    onChange={(e) => setContactInfo({ ...contactInfo, location: e.target.value })}
+                    placeholder="Toronto, ON, CA"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="contact-instagram">Instagram Handle</Label>
+                  <Input
+                    id="contact-instagram"
+                    value={contactInfo.instagram}
+                    onChange={(e) => setContactInfo({ ...contactInfo, instagram: e.target.value })}
+                    placeholder="@lensillumination"
+                  />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="justify-end">
+              <Button
+                onClick={handleSaveContact}
+                disabled={savingContact || !contactInfo.email.trim()}
+                className="min-w-[140px]"
+              >
+                {savingContact ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save Contact Info"
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+
+        {/* About Section */}
+        <div className="mt-8" id="about-section">
+          <Card>
+            <CardHeader>
+              <CardTitle>About Us</CardTitle>
+              <CardDescription>Update the about section shown on the homepage and about page.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="about-title">Title</Label>
+                  <Input
+                    id="about-title"
+                    value={aboutTitle}
+                    onChange={(e) => setAboutTitle(e.target.value)}
+                    placeholder="About Us"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="about-content">Content</Label>
+                  <textarea
+                    id="about-content"
+                    value={aboutContent}
+                    onChange={(e) => setAboutContent(e.target.value)}
+                    placeholder="Tell your story..."
+                    className="min-h-[200px] w-full rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter className="justify-end">
+              <Button
+                onClick={handleSaveAbout}
+                disabled={savingAbout || !aboutTitle.trim()}
+                className="min-w-[140px]"
+              >
+                {savingAbout ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  "Save About"
                 )}
               </Button>
             </CardFooter>

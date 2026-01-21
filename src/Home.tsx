@@ -4,14 +4,22 @@ import { Card } from "@/components/ui/card";
 import { db } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Image as ImageIcon } from "lucide-react";
+import { ArrowRight, Image as ImageIcon, Settings } from "lucide-react";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import { useAuth } from "@/hooks/useAuth";
 
 type PublicAlbum = {
   id: string;
   name: string;
   imagesCount: number;
   createdAt?: any;
+};
+
+type PricingItem = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
 };
 
 function Home() {
@@ -22,8 +30,16 @@ function Home() {
     "Welcome to my photography portfolio. Explore my latest work, browse albums, and get in touch to discuss your project."
   );
   const [heroImage, setHeroImage] = useState("https://picsum.photos/seed/hero/1920/1080");
+  const [pricingItems, setPricingItems] = useState<PricingItem[]>([]);
+  const [aboutTitle, setAboutTitle] = useState("About Us");
+  const [aboutContent, setAboutContent] = useState(
+    "Welcome to our photography studio. We specialize in capturing life's most precious moments with creativity and passion."
+  );
   const albumsRef = useRef<HTMLDivElement>(null);
+  const pricingRef = useRef<HTMLDivElement>(null);
+  const aboutRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchPublicAlbums = async () => {
@@ -70,9 +86,45 @@ function Home() {
     fetchHomeSettings();
   }, []);
 
+  useEffect(() => {
+    const fetchPricing = async () => {
+      try {
+        const pricingDoc = await getDoc(doc(db, "settings", "pricing"));
+        if (pricingDoc.exists()) {
+          const data = pricingDoc.data();
+          if (data.items && Array.isArray(data.items)) {
+            setPricingItems(data.items);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load pricing", err);
+      }
+    };
+    fetchPricing();
+  }, []);
+
+  useEffect(() => {
+    const fetchAboutData = async () => {
+      try {
+        const aboutDoc = await getDoc(doc(db, "settings", "about"));
+        if (aboutDoc.exists()) {
+          const data = aboutDoc.data();
+          if (data.title) setAboutTitle(data.title);
+          if (data.content) setAboutContent(data.content);
+        }
+      } catch (err) {
+        console.error("Failed to load about data", err);
+      }
+    };
+    fetchAboutData();
+  }, []);
+
   const heroCta = useMemo(() => {
     const scrollToAlbums = () => {
       albumsRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+    const scrollToPricing = () => {
+      pricingRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
     return (
       <div className="flex justify-center gap-2 flex-wrap">
@@ -84,6 +136,23 @@ function Home() {
           View Albums
           <ArrowRight className="h-4 w-4 ml-2" />
         </Button>
+        {pricingItems.length > 0 && (
+          <Button
+            size="lg"
+            variant="secondary"
+            onClick={scrollToPricing}
+          >
+            View Pricing
+            <ArrowRight className="h-4 w-4 ml-2" />
+          </Button>
+        )}
+        <Button
+          size="lg"
+          variant="secondary"
+          onClick={() => aboutRef.current?.scrollIntoView({ behavior: 'smooth' })}
+        >
+          About Us
+        </Button>
         <Button
           size="lg"
           variant="secondary"
@@ -93,7 +162,7 @@ function Home() {
         </Button>
       </div>
     );
-  }, [navigate]);
+  }, [navigate, pricingItems.length]);
 
   return (
     <main className="min-h-screen bg-background">
@@ -105,6 +174,30 @@ function Home() {
             alt="Hero"
             className="w-full h-full object-cover"
           />
+          
+          {/* Edit Button (Admin Only) */}
+          {user && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigate("/admin");
+                setTimeout(() => {
+                  const headerSection = document.getElementById('homepage-header');
+                  if (headerSection) {
+                    const offset = headerSection.getBoundingClientRect().top + window.scrollY - 100;
+                    window.scrollTo({ top: offset, behavior: 'smooth' });
+                  }
+                }, 500);
+              }}
+              className="absolute top-4 right-4 gap-2 bg-white hover:bg-white/90 text-black shadow-lg z-10"
+            >
+              <Settings className="h-4 w-4" />
+              Edit Header
+            </Button>
+          )}
           
           {/* Overlay with Hero Text */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-6 md:p-8">
@@ -120,6 +213,50 @@ function Home() {
             {heroCta}
           </div>
         </div>
+      </div>
+
+      {/* About Section */}
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16" ref={aboutRef}>
+        <section className="space-y-8">
+          <div className="text-center space-y-4 flex flex-col items-center">
+            <h2 className="text-3xl font-bold">{aboutTitle}</h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto text-lg leading-relaxed whitespace-pre-wrap">
+              {aboutContent}
+            </p>
+            <div className="flex gap-3 flex-wrap justify-center pt-2">
+              <Button
+                size="lg"
+                asChild
+                className="gap-2"
+              >
+                <a href="/contact">
+                  Learn More
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+              </Button>
+              {user && (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => {
+                    navigate("/admin");
+                    setTimeout(() => {
+                      const aboutSection = document.getElementById('about-section');
+                      if (aboutSection) {
+                        const offset = aboutSection.getBoundingClientRect().top + window.scrollY - 100;
+                        window.scrollTo({ top: offset, behavior: 'smooth' });
+                      }
+                    }, 300);
+                  }}
+                  className="gap-2"
+                >
+                  <Settings className="h-4 w-4" />
+                  Edit About
+                </Button>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
 
       {/* Featured Albums Section */}
@@ -173,6 +310,75 @@ function Home() {
             </div>
           )}
         </section>
+
+        {/* Pricing Section */}
+        {pricingItems.length > 0 && (
+          <section className="space-y-8 mt-16" ref={pricingRef}>
+            <div className="text-center space-y-4 flex flex-col items-center">
+              <h2 className="text-3xl font-bold">Pricing</h2>
+              <p className="text-muted-foreground max-w-2xl mx-auto">
+                Professional photography packages tailored to your needs
+              </p>
+              <div className="flex gap-3 flex-wrap justify-center">
+                <Button
+                  size="lg"
+                  onClick={() => navigate("/pricing")}
+                  className="gap-2"
+                >
+                  View All Packages
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+                {user && (
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    onClick={() => {
+                      navigate("/admin");
+                      setTimeout(() => {
+                        const pricingSection = document.querySelector('[data-pricing-management]');
+                        if (pricingSection) {
+                          const offset = pricingSection.getBoundingClientRect().top + window.scrollY - 100;
+                          window.scrollTo({ top: offset, behavior: 'smooth' });
+                        }
+                      }, 300);
+                    }}
+                    className="gap-2"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Manage Pricing
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {pricingItems.slice(0, 3).map((item) => (
+                <Card
+                  key={item.id}
+                  className="flex flex-col hover:shadow-lg transition-shadow overflow-hidden"
+                >
+                  <div className="p-6 flex-1 flex flex-col">
+                    <h3 className="text-2xl font-semibold mb-2">{item.name}</h3>
+                    <p className="text-muted-foreground text-sm mb-4">{item.description}</p>
+                    <div className="mt-auto">
+                      <div className="text-4xl font-bold text-primary mb-1">
+                        ${item.price}
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-4">Starting price</p>
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={() => navigate("/contact")}
+                      >
+                        Get Started
+                      </Button>
+                    </div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );

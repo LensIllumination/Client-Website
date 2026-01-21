@@ -132,4 +132,50 @@ body {
   body {
     @apply bg-background text-foreground;
   }
+
+  /* Scrollbar Styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--background);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--foreground);
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+
+  .dark::-webkit-scrollbar-thumb {
+    background: var(--accent);
+  }
+
+  .dark::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-color: var(--foreground) var(--background);
+    scrollbar-width: thin;
+  }
+
+  *:hover {
+    scrollbar-color: var(--muted-foreground) var(--background);
+  }
+
+  .dark * {
+    scrollbar-color: var(--accent) var(--background);
+  }
+
+  .dark *:hover {
+    scrollbar-color: var(--muted-foreground) var(--background);
+  }
 }

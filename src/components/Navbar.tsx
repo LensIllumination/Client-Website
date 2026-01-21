@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { CameraIcon, LogOut, Settings, Moon, Sun, Home, Image, Mail, Menu, X } from "lucide-react";
+import { CameraIcon, LogOut, Settings, Moon, Sun, Home, Image, Mail, Menu, X, DollarSign } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { auth } from "@/firebase";
@@ -10,6 +10,7 @@ function Navbar() {
   const isHome = pathname === "/";
   const isContact = pathname === "/contact";
   const isAlbums = pathname === "/albums";
+  const isPricing = pathname === "/pricing";
   const isAdmin = pathname.startsWith("/admin");
   const [user, setUser] = useState<User | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -78,6 +79,18 @@ function Navbar() {
                 </a>
               </Button>
             )}
+            {!isPricing && (
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+              >
+                <a href="/pricing">
+                  <DollarSign className="h-4 w-4" />
+                  <span className="ml-2">Pricing</span>
+                </a>
+              </Button>
+            )}
             {!isContact && (
               <Button
                 variant="outline"
@@ -109,19 +122,19 @@ function Navbar() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={toggleTheme}
-                  aria-label="Toggle theme"
-                >
-                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
                   onClick={() => signOut(auth)}
                   title="Sign out"
                 >
                   <LogOut className="h-4 w-4" />
                   <span className="ml-2">Logout</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={toggleTheme}
+                  aria-label="Toggle theme"
+                >
+                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </Button>
               </>
             ) : (
@@ -175,6 +188,18 @@ function Navbar() {
                 </a>
               </Button>
             )}
+            {!isPricing && (
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                title="Pricing"
+              >
+                <a href="/pricing">
+                  <DollarSign className="h-4 w-4" />
+                </a>
+              </Button>
+            )}
             {!isContact && (
               <Button
                 variant="outline"
@@ -206,18 +231,18 @@ function Navbar() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={toggleTheme}
-                  title="Toggle theme"
-                >
-                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
                   onClick={() => signOut(auth)}
                   title="Sign out"
                 >
                   <LogOut className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={toggleTheme}
+                  title="Toggle theme"
+                >
+                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
                 </Button>
               </>
             ) : (
@@ -306,6 +331,32 @@ function Navbar() {
                 <a href="/albums" className="justify-start">
                   <Image className="h-4 w-4" />
                   <span className="ml-2">Albums</span>
+                </a>
+              </Button>
+            )}
+            {!isPricing && (
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <a href="/pricing" className="justify-start">
+                  <DollarSign className="h-4 w-4" />
+                  <span className="ml-2">Pricing</span>
+                </a>
+              </Button>
+            )}
+            {!isContact && (
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                <a href="/contact" className="justify-start">
+                  <Mail className="h-4 w-4" />
+                  <span className="ml-2">Contact</span>
                 </a>
               </Button>
             )}

@@ -1,7 +1,30 @@
-import { Github, Mail, Home, Image as ImageIcon, Phone } from "lucide-react";
+import { Github, Mail, Home, Image as ImageIcon, Phone, Instagram } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { db } from "@/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 export default function Footer() {
+  const [contactInfo, setContactInfo] = useState({ email: "contect@lensillumination.ca", instagram: "@lensillumination" });
+
+  useEffect(() => {
+    const fetchContactInfo = async () => {
+      try {
+        const contactDoc = await getDoc(doc(db, "settings", "contact"));
+        if (contactDoc.exists()) {
+          const data = contactDoc.data();
+          setContactInfo({
+            email: data.email || "contect@lensillumination.ca",
+            instagram: data.instagram || "@lensillumination",
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load contact info in footer", error);
+      }
+    };
+    fetchContactInfo();
+  }, []);
+
   const CopyleftIcon = () => (
     <svg
       className="h-4 w-4"
@@ -79,9 +102,20 @@ export default function Footer() {
                 className="justify-start text-muted-foreground hover:text-foreground w-fit"
                 asChild
               >
-                <a href="mailto:contect@lensillumination.ca" className="gap-2 flex">
+                <a href={`mailto:${contactInfo.email}`} className="gap-2 flex">
                   <Mail className="h-4 w-4" />
                   <span>Email</span>
+                </a>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start text-muted-foreground hover:text-foreground w-fit"
+                asChild
+              >
+                <a href={`https://instagram.com/${contactInfo.instagram.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="gap-2 flex">
+                  <Instagram className="h-4 w-4" />
+                  <span>Instagram</span>
                 </a>
               </Button>
               <Button
@@ -105,7 +139,7 @@ export default function Footer() {
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
             <p className="flex items-center gap-1">
               <CopyleftIcon />
-              <span>2026 Lens Illumination. Licensed under GPL-3.0-only.</span>
+              <span>Copyleft 2026 Lens Illumination. Licensed under GPL-3.0-only.</span>
               <a
                 href="/LICENSE.txt"
                 target="_blank"
