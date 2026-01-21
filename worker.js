@@ -115,18 +115,27 @@ export default {
         return errorResponse;
       }
 
-      // 7. Create new Response and apply CORS
-      const response = new Response(b2Response.body, b2Response);
-      Object.keys(corsHeaders).forEach((k) => response.headers.set(k, corsHeaders[k]));
+      // 7. Create new Response headers
+      const responseHeaders = new Headers(b2Response.headers);
+      
+      // Apply CORS headers
+      Object.keys(corsHeaders).forEach((k) => responseHeaders.set(k, corsHeaders[k]));
 
       // 8. Apply Caching Strategy for GET requests
       // This is what prevents the 'Bandwidth Exceeded' error
-      if (request.method === "GET" && b2Response.ok) {
+      if (request.method === "GET" && b2Response.status >= 200 && b2Response.status < 300) {
         // public: cacheable by CDN and Browser
         // max-age: browser cache (7 days)
         // s-maxage: Cloudflare CDN cache (7 days)
-        response.headers.set("Cache-Control", "public, max-age=604800, s-maxage=604800");
+        responseHeaders.set("Cache-Control", "public, max-age=604800, s-maxage=604800");
       }
+
+      // Create response with modified headers
+      const response = new Response(b2Response.body, {
+        status: b2Response.status,
+        statusText: b2Response.statusText,
+        headers: responseHeaders
+      });
 
       return response;
 

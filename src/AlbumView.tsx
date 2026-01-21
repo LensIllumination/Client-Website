@@ -6,7 +6,7 @@ import GalleryImage from "@/components/GalleryImage";
 import { auth } from "@/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import type { User } from "firebase/auth";
-import { X, Settings, Download, Share2, Copy, ArrowUp } from "lucide-react";
+import { X, Settings, Download, Share2, Copy, ArrowUp, Loader2 } from "lucide-react";
 import JSZip from "jszip";
 import { toast } from "sonner";
 import ImageErrorPanel from "@/components/ImageErrorPanel";
@@ -22,8 +22,9 @@ export function AlbumView() {
   const [album, setAlbum] = useState<Album | null>(null);
   const [error, setError] = useState(false);
   const [user, setUser] = useState<User | null>(null);
-  const [fullscreenImage, setFullscreenImage] = useState<{ src: string; fullSrc: string; title: string } | null>(null);
+  const [fullscreenImage, setFullscreenImage] = useState<{ id: string; src: string; fullSrc: string; title: string } | null>(null);
   const [fullscreenLoadError, setFullscreenLoadError] = useState(false);
+  const [fullscreenImageLoaded, setFullscreenImageLoaded] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [imageSizes, setImageSizes] = useState<Map<string, string>>(new Map());
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -402,33 +403,78 @@ export function AlbumView() {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-white hover:bg-white/20 p-2 md:p-1 h-10 md:h-8 flex-shrink-0"
+                className="text-white hover:bg-white/20 p-2 md:p-1 h-12 md:h-10 flex-shrink-0 cursor-pointer"
                 onClick={(e) => {
                   e.stopPropagation();
                   setFullscreenImage(null);
                 }}
               >
-                <X className="h-6 w-6 md:h-5 md:w-5" />
+                <X className="h-8 w-8 md:h-7 md:w-7" />
               </Button>
             </div>
 
-            <div className="flex-1 flex items-center justify-center overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex-1 flex items-center justify-center overflow-hidden relative" onClick={(e) => e.stopPropagation()}>
+              {/* Left Arrow */}
+              <button
+                className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-2 z-10 cursor-pointer hover:cursor-pointer"
+                style={{ visibility: album && album.images.length > 1 ? 'visible' : 'hidden' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!fullscreenImage || !album) return;
+                  const idx = album.images.findIndex(img => img.id === fullscreenImage.id);
+                  setFullscreenLoadError(false);
+                  setFullscreenImageLoaded(false);
+                  if (idx > 0) setFullscreenImage(album.images[idx - 1]);
+                  else setFullscreenImage(album.images[album.images.length - 1]);
+                }}
+                aria-label="Previous image"
+              >
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              </button>
               {fullscreenLoadError ? (
                 <div className="w-full h-full max-w-full max-h-full">
                   <ImageErrorPanel />
                 </div>
               ) : (
-                <img
-                  src={fullscreenImage!.fullSrc}
-                  alt={fullscreenImage!.title}
-                  className="max-h-full max-w-full object-contain"
-                  onError={(e) => {
-                    console.error("Fullscreen image load error:", fullscreenImage?.fullSrc, e);
-                    setFullscreenLoadError(true);
-                    toast.error("Please try again later");
-                  }}
-                />
+                <>
+                  {!fullscreenImageLoaded && (
+                    <div className="absolute inset-0 flex items-center justify-center z-10">
+                      <Loader2 className="animate-spin text-white w-12 h-12 opacity-80" />
+                    </div>
+                  )}
+                  <img
+                    key={fullscreenImage!.fullSrc}
+                    src={fullscreenImage!.fullSrc}
+                    alt={fullscreenImage!.title}
+                    className={`max-h-full max-w-full object-contain transition-opacity duration-500 ${
+                      fullscreenImageLoaded ? 'opacity-100' : 'opacity-0'
+                    }`}
+                    onLoad={() => setFullscreenImageLoaded(true)}
+                    onError={(e) => {
+                      console.error("Fullscreen image load error:", fullscreenImage?.fullSrc, e);
+                      setFullscreenLoadError(true);
+                      toast.error("Please try again later");
+                    }}
+                  />
+                </>
               )}
+              {/* Right Arrow */}
+              <button
+                className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-2 z-10 cursor-pointer hover:cursor-pointer"
+                style={{ visibility: album && album.images.length > 1 ? 'visible' : 'hidden' }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (!fullscreenImage || !album) return;
+                  const idx = album.images.findIndex(img => img.id === fullscreenImage.id);
+                  setFullscreenLoadError(false);
+                  setFullscreenImageLoaded(false);
+                  if (idx < album.images.length - 1) setFullscreenImage(album.images[idx + 1]);
+                  else setFullscreenImage(album.images[0]);
+                }}
+                aria-label="Next image"
+              >
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
             </div>
 
             {fullscreenImage!.title && (

@@ -244,6 +244,7 @@ export default function AdminDashboard() {
   const [overallProgress, setOverallProgress] = useState(0);
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
   const [fullscreenImage, setFullscreenImage] = useState<ImageItem | null>(null);
+  const [fullscreenImageLoaded, setFullscreenImageLoaded] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [homeHeroTitle, setHomeHeroTitle] = useState("My photography, beautifully presented.");
   const [homeHeroSubtitle, setHomeHeroSubtitle] = useState(
@@ -2122,26 +2123,71 @@ export default function AdminDashboard() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="text-white hover:bg-white/20 p-2 md:p-1 h-10 md:h-8 flex-shrink-0"
+                  className="text-white hover:bg-white/20 p-2 md:p-1 h-12 md:h-10 flex-shrink-0 cursor-pointer"
                   onClick={(e) => {
                     e.stopPropagation();
                     setFullscreenImage(null);
                   }}
                 >
-                  <X className="h-6 w-6 md:h-5 md:w-5" />
+                  <X className="h-8 w-8 md:h-7 md:w-7" />
                 </Button>
               </div>
 
-              <div className="flex-1 flex items-center justify-center overflow-hidden" onClick={(e) => e.stopPropagation()}>
+
+              <div className="flex-1 flex items-center justify-center overflow-hidden relative" onClick={(e) => e.stopPropagation()}>
+                {/* Left Arrow */}
+                <button
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-2 z-10 cursor-pointer hover:cursor-pointer"
+                  style={{ visibility: albumImages.length > 1 ? 'visible' : 'hidden' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!fullscreenImage || !albumImages.length) return;
+                    const idx = albumImages.findIndex(img => img.id === fullscreenImage.id);
+                    if (idx === -1) return;
+                    setFullscreenImageLoaded(false);
+                    if (idx > 0) setFullscreenImage(albumImages[idx - 1]);
+                    else setFullscreenImage(albumImages[albumImages.length - 1]);
+                  }}
+                  aria-label="Previous image"
+                >
+                  <svg width="28" height="28" viewBox="0 0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                </button>
+                {/* Loading Spinner */}
+                {!fullscreenImageLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center z-10">
+                    <Loader2 className="animate-spin text-white w-12 h-12 opacity-80" />
+                  </div>
+                )}
                 <img
+                  key={fullscreenImage.id}
                   src={
                     fullscreenImage.id.startsWith("debug-")
                       ? fullscreenImage["file-name"]
                       : `${WORKER_URL}/${fullscreenImage["file-name"]}`
                   }
                   alt={fullscreenImage.name}
-                  className="max-h-full max-w-full object-contain"
+                  className={`max-h-full max-w-full object-contain transition-opacity duration-500 ${
+                    fullscreenImageLoaded ? 'opacity-100' : 'opacity-0'
+                  }`}
+                  onLoad={() => setFullscreenImageLoaded(true)}
                 />
+                {/* Right Arrow */}
+                <button
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black/80 text-white rounded-full p-2 z-10 cursor-pointer hover:cursor-pointer"
+                  style={{ visibility: albumImages.length > 1 ? 'visible' : 'hidden' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!fullscreenImage || !albumImages.length) return;
+                    const idx = albumImages.findIndex(img => img.id === fullscreenImage.id);
+                    if (idx === -1) return;
+                    setFullscreenImageLoaded(false);
+                    if (idx < albumImages.length - 1) setFullscreenImage(albumImages[idx + 1]);
+                    else setFullscreenImage(albumImages[0]);
+                  }}
+                  aria-label="Next image"
+                >
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                </button>
               </div>
 
               <div className="bg-black/60 text-white p-4 rounded-lg">
