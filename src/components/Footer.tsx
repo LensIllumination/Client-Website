@@ -1,11 +1,18 @@
-import { Github, Mail, Home, Image as ImageIcon, Phone, Instagram } from "lucide-react";
+import { Github, Mail, Home, Image as ImageIcon, Phone, Instagram, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
-import { db } from "@/firebase";
+import { db, auth } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 
 export default function Footer() {
   const [contactInfo, setContactInfo] = useState({ email: "contect@lensillumination.ca", instagram: "@lensillumination" });
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
+    return () => unsub();
+  }, []);
 
   useEffect(() => {
     const fetchContactInfo = async () => {
@@ -89,6 +96,29 @@ export default function Footer() {
                   <span>Contact</span>
                 </a>
               </Button>
+              {user ? (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start text-muted-foreground hover:text-foreground w-fit"
+                  onClick={() => signOut(auth)}
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Logout</span>
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="justify-start text-muted-foreground hover:text-foreground w-fit"
+                  asChild
+                >
+                  <a href="/admin/signin" className="gap-2 flex">
+                    <LogOut className="h-4 w-4" />
+                    <span>Login</span>
+                  </a>
+                </Button>
+              )}
             </div>
           </div>
 

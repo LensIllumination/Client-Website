@@ -52,57 +52,32 @@ function Navbar() {
           {/* Large Screen Navigation - Full Text */}
           <div className="hidden 2xl:flex items-center gap-2">
             {/* Navigation Links */}
-            {!isHome && (
-              <Button variant="outline" size="sm" asChild>
-                <a href="/">
-                  <Home className="h-4 w-4" />
-                  <span className="ml-1">Home</span>
-                </a>
-              </Button>
-            )}
-            {!isAlbums && (
-              <Button variant="outline" size="sm" asChild>
-                <a href="/albums">
-                  <Image className="h-4 w-4" />
-                  <span className="ml-1">Albums</span>
-                </a>
-              </Button>
-            )}
-            {!isPricing && (
-              <Button variant="outline" size="sm" asChild>
-                <a href="/pricing">
-                  <DollarSign className="h-4 w-4" />
-                  <span className="ml-1">Pricing</span>
-                </a>
-              </Button>
-            )}
-            {!isContact && (
-              <Button variant="outline" size="sm" asChild>
-                <a href="/contact">
-                  <Mail className="h-4 w-4" />
-                  <span className="ml-1">Contact</span>
-                </a>
-              </Button>
-            )}
+            <Button variant={isHome ? "default" : "outline"} size="sm" asChild>
+              <a href="/">
+                <Home className="h-4 w-4" />
+                <span className="ml-1">Home</span>
+              </a>
+            </Button>
+            <Button variant={isAlbums ? "default" : "outline"} size="sm" asChild>
+              <a href="/albums">
+                <Image className="h-4 w-4" />
+                <span className="ml-1">Albums</span>
+              </a>
+            </Button>
+            <Button variant={isPricing ? "default" : "outline"} size="sm" asChild>
+              <a href="/pricing">
+                <DollarSign className="h-4 w-4" />
+                <span className="ml-1">Pricing</span>
+              </a>
+            </Button>
+            <Button variant={isContact ? "default" : "outline"} size="sm" asChild>
+              <a href="/contact">
+                <Mail className="h-4 w-4" />
+                <span className="ml-1">Contact</span>
+              </a>
+            </Button>
 
             {/* User Actions */}
-            {user ? (
-              <>
-                <Button size="sm" variant="outline" onClick={() => signOut(auth)}>
-                  <LogOut className="h-4 w-4" />
-                  <span className="ml-1">Logout</span>
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button size="sm" variant="default" asChild>
-                  <a href="/admin/signin">
-                    <LogOut className="h-4 w-4" />
-                    <span className="ml-1">Login</span>
-                  </a>
-                </Button>
-              </>
-            )}
             <Button size="sm" variant="outline" onClick={toggleTheme} aria-label="Toggle theme">
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
@@ -110,50 +85,27 @@ function Navbar() {
 
           {/* Medium Screen Navigation - Icons Only */}
           <div className="hidden xl:flex 2xl:hidden items-center gap-2">
-            {!isHome && (
-              <Button variant="outline" size="sm" asChild title="Home">
-                <a href="/">
-                  <Home className="h-4 w-4" />
-                </a>
-              </Button>
-            )}
-            {!isAlbums && (
-              <Button variant="outline" size="sm" asChild title="Albums">
-                <a href="/albums">
-                  <Image className="h-4 w-4" />
-                </a>
-              </Button>
-            )}
-            {!isPricing && (
-              <Button variant="outline" size="sm" asChild title="Pricing">
-                <a href="/pricing">
-                  <DollarSign className="h-4 w-4" />
-                </a>
-              </Button>
-            )}
-            {!isContact && (
-              <Button variant="outline" size="sm" asChild title="Contact">
-                <a href="/contact">
-                  <Mail className="h-4 w-4" />
-                </a>
-              </Button>
-            )}
+            <Button variant={isHome ? "default" : "outline"} size="sm" asChild title="Home">
+              <a href="/">
+                <Home className="h-4 w-4" />
+              </a>
+            </Button>
+            <Button variant={isAlbums ? "default" : "outline"} size="sm" asChild title="Albums">
+              <a href="/albums">
+                <Image className="h-4 w-4" />
+              </a>
+            </Button>
+            <Button variant={isPricing ? "default" : "outline"} size="sm" asChild title="Pricing">
+              <a href="/pricing">
+                <DollarSign className="h-4 w-4" />
+              </a>
+            </Button>
+            <Button variant={isContact ? "default" : "outline"} size="sm" asChild title="Contact">
+              <a href="/contact">
+                <Mail className="h-4 w-4" />
+              </a>
+            </Button>
 
-            {user ? (
-              <>
-                <Button size="sm" variant="outline" onClick={() => signOut(auth)} title="Logout">
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button size="sm" variant="default" asChild title="Login">
-                  <a href="/admin/signin">
-                    <LogOut className="h-4 w-4" />
-                  </a>
-                </Button>
-              </>
-            )}
             <Button size="sm" variant="outline" onClick={toggleTheme} title="Toggle Theme">
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
@@ -161,14 +113,6 @@ function Navbar() {
 
           {/* Mobile Navigation - Hamburger */}
           <div className="flex xl:hidden items-center gap-2">
-            {!isContact && (
-              <Button variant="outline" size="sm" asChild>
-                <a href="/contact">
-                  <Mail className="h-4 w-4" />
-                  <span className="ml-1">Contact</span>
-                </a>
-              </Button>
-            )}
             <Button
               size="sm"
               variant="outline"
@@ -190,64 +134,31 @@ function Navbar() {
       {mobileMenuOpen && (
         <div className="xl:hidden fixed inset-x-0 top-16 z-40 bg-background border-b shadow-lg animate-in slide-in-from-top-2 duration-200">
           <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col gap-2">
-            {!isHome && (
-              <Button variant="outline" size="sm" asChild onClick={() => setMobileMenuOpen(false)}>
-                <a href="/" className="justify-start">
-                  <Home className="h-4 w-4" />
-                  <span className="ml-1">Home</span>
-                </a>
-              </Button>
-            )}
-            {!isAlbums && (
-              <Button variant="outline" size="sm" asChild onClick={() => setMobileMenuOpen(false)}>
-                <a href="/albums" className="justify-start">
-                  <Image className="h-4 w-4" />
-                  <span className="ml-1">Albums</span>
-                </a>
-              </Button>
-            )}
-            {!isPricing && (
-              <Button variant="outline" size="sm" asChild onClick={() => setMobileMenuOpen(false)}>
-                <a href="/pricing" className="justify-start">
-                  <DollarSign className="h-4 w-4" />
-                  <span className="ml-1">Pricing</span>
-                </a>
-              </Button>
-            )}
-            {!isContact && (
-              <Button variant="outline" size="sm" asChild onClick={() => setMobileMenuOpen(false)}>
-                <a href="/contact" className="justify-start">
-                  <Mail className="h-4 w-4" />
-                  <span className="ml-1">Contact</span>
-                </a>
-              </Button>
-            )}
+            <Button variant={isHome ? "default" : "outline"} size="sm" asChild onClick={() => setMobileMenuOpen(false)}>
+              <a href="/" className="justify-start">
+                <Home className="h-4 w-4" />
+                <span className="ml-1">Home</span>
+              </a>
+            </Button>
+            <Button variant={isAlbums ? "default" : "outline"} size="sm" asChild onClick={() => setMobileMenuOpen(false)}>
+              <a href="/albums" className="justify-start">
+                <Image className="h-4 w-4" />
+                <span className="ml-1">Albums</span>
+              </a>
+            </Button>
+            <Button variant={isPricing ? "default" : "outline"} size="sm" asChild onClick={() => setMobileMenuOpen(false)}>
+              <a href="/pricing" className="justify-start">
+                <DollarSign className="h-4 w-4" />
+                <span className="ml-1">Pricing</span>
+              </a>
+            </Button>
+            <Button variant={isContact ? "default" : "outline"} size="sm" asChild onClick={() => setMobileMenuOpen(false)}>
+              <a href="/contact" className="justify-start">
+                <Mail className="h-4 w-4" />
+                <span className="ml-1">Contact</span>
+              </a>
+            </Button>
 
-            {user ? (
-              <>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    signOut(auth);
-                  }}
-                  className="justify-start"
-                >
-                  <LogOut className="h-4 w-4" />
-                  <span className="ml-1">Logout</span>
-                </Button>
-              </>
-            ) : (
-              <>
-                <Button size="sm" variant="default" asChild onClick={() => setMobileMenuOpen(false)}>
-                  <a href="/admin/signin" className="justify-start">
-                    <LogOut className="h-4 w-4" />
-                    <span className="ml-1">Login</span>
-                  </a>
-                </Button>
-              </>
-            )}
             <Button
               size="sm"
               variant="outline"
