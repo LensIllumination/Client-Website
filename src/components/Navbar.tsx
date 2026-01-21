@@ -1,9 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { CameraIcon, LogOut, Moon, Sun, Home, Image, Mail, Menu, X, DollarSign } from "lucide-react";
+import { CameraIcon, Moon, Sun, Home, Image, Mail, Menu, X, DollarSign } from "lucide-react";
 import { useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { auth } from "@/firebase";
-import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 
 function Navbar() {
   const { pathname } = useLocation();
@@ -11,14 +9,8 @@ function Navbar() {
   const isContact = pathname === "/contact";
   const isAlbums = pathname === "/albums";
   const isPricing = pathname === "/pricing";
-  const [user, setUser] = useState<User | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u));
-    return () => unsub();
-  }, []);
 
   useEffect(() => {
     const prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
