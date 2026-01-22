@@ -28,6 +28,7 @@ export function AlbumView() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [imageSizes, setImageSizes] = useState<Map<string, string>>(new Map());
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const navigate = useNavigate();
 
   // Generate random height for each image (weighted towards shorter images)
@@ -258,24 +259,35 @@ export function AlbumView() {
      }
    };
 
-  if (!album) return <div className="p-10 text-center animate-pulse">Loading gallery...</div>;
+  if (!album) return (
+    <div className="p-10 text-center flex flex-col items-center justify-center min-h-screen animate-fade-in">
+      <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
+      <p className="text-muted-foreground">Loading gallery...</p>
+    </div>
+  );
 
   return (
-    <main className="min-h-screen pt-2 pb-8">
+    <main className="min-h-screen pt-2 pb-8 animate-fade-in">
       {/* Hero Image Section with Overlay */}
       <div className="mx-auto max-w-7xl px-4 mb-4">
         <div className="relative w-full h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-2xl bg-muted">
           {/* Hero Image */}
           {album.heroImage ? (
             <div 
-              className="cursor-pointer w-full h-full"
+              className="cursor-pointer w-full h-full relative"
               onClick={() => setFullscreenImage(album.heroImage!)}
             >
+              {!heroImageLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center z-10 animate-fade-in">
+                  <Loader2 className="h-16 w-16 animate-spin text-muted-foreground" />
+                </div>
+              )}
               <img
                 src={album.heroImage.fullSrc}
                 alt={album.heroImage.title}
-                className="w-full h-full object-cover rounded-xl"
+                className={`w-full h-full object-cover rounded-xl transition-all duration-700 ${heroImageLoaded ? 'opacity-100 animate-fade-in-scale' : 'opacity-0'}`}
                 onClick={() => setFullscreenImage(album.heroImage!)}
+                onLoad={() => setHeroImageLoaded(true)}
               />
             </div>
           ) : (
@@ -285,7 +297,7 @@ export function AlbumView() {
           )}
           
           {/* Overlay with Album Info */}
-          <div className="absolute inset-0 dark:bg-gradient-to-t dark:from-background dark:from-0% dark:via-background/70 dark:via-20% dark:to-transparent dark:to-40% flex flex-col justify-end p-6 md:p-8 pointer-events-none">
+          <div className={`absolute inset-0 dark:bg-gradient-to-t dark:from-background dark:from-0% dark:via-background/70 dark:via-20% dark:to-transparent dark:to-40% flex flex-col justify-end p-6 md:p-8 pointer-events-none transition-all duration-700 ${heroImageLoaded || !album.heroImage ? 'opacity-100 animate-fade-in-up' : 'opacity-0'}`}>
             <div className="text-center mb-4">
               <h1 className="text-3xl md:text-5xl font-bold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">{album.name}</h1>
               <p className="mt-2 text-white/90 text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{album.images.length} Photos</p>

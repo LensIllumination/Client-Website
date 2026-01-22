@@ -171,9 +171,7 @@ export default function Footer() {
               <CopyleftIcon />
               <span>Copyleft 2026 Lens Illumination. Licensed under GPL-3.0-only.</span>
               <a
-                href="/LICENSE.txt"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="/license"
                 className="font-semibold text-foreground hover:underline ml-1 flex items-center gap-1"
               >
                 View license

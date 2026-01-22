@@ -4,7 +4,7 @@ import { db } from "@/firebase";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
-import { Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, Loader2 } from "lucide-react";
 
 type PublicAlbum = {
   id: string;
@@ -80,11 +80,14 @@ export default function PublicAlbums() {
         </div>
 
         {loading ? (
-          <div className="text-center py-16 text-muted-foreground">Loading albums...</div>
+          <div className="text-center py-16 flex flex-col items-center animate-fade-in">
+            <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
+            <p className="text-muted-foreground">Loading albums...</p>
+          </div>
         ) : albums.length === 0 ? (
-          <div className="text-center py-16 text-muted-foreground">No public albums yet. Check back soon!</div>
+          <div className="text-center py-16 text-muted-foreground animate-fade-in">No public albums yet. Check back soon!</div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in-up">
             {albums.map((album) => (
               <Card
                 key={album.id}
@@ -109,6 +112,7 @@ export default function PublicAlbums() {
                     onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/album/${album.id}`);
+                      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                     }}
                     className="w-full mt-auto"
                   >

@@ -272,6 +272,8 @@ export default function AdminDashboard() {
   
   // Contact state
   const [contactInfo, setContactInfo] = useState({ email: "", phone: "", location: "", instagram: "" });
+  const [contactTitle, setContactTitle] = useState("Get in Touch");
+  const [contactSubtitle, setContactSubtitle] = useState("Have questions? Reach out directly through the options below and I'll get back to you as soon as possible.");
   const [savingContact, setSavingContact] = useState(false);
   
   // About state
@@ -449,6 +451,8 @@ export default function AdminDashboard() {
           location: data.location || "",
           instagram: data.instagram || "",
         });
+        if (data.title) setContactTitle(data.title);
+        if (data.subtitle) setContactSubtitle(data.subtitle);
       }
     } catch (error) {
       console.error("Load contact error:", error);
@@ -463,7 +467,11 @@ export default function AdminDashboard() {
 
     setSavingContact(true);
     try {
-      await setDoc(doc(db, "settings", "contact"), contactInfo, { merge: true });
+      await setDoc(doc(db, "settings", "contact"), {
+        ...contactInfo,
+        title: contactTitle,
+        subtitle: contactSubtitle
+      }, { merge: true });
       toast.success("Contact information updated");
     } catch (error) {
       console.error("Save contact error:", error);
@@ -2027,6 +2035,25 @@ export default function AdminDashboard() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="contact-title">Page Title</Label>
+                  <Input
+                    id="contact-title"
+                    value={contactTitle}
+                    onChange={(e) => setContactTitle(e.target.value)}
+                    placeholder="Get in Touch"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="contact-subtitle">Page Subtitle</Label>
+                  <textarea
+                    id="contact-subtitle"
+                    value={contactSubtitle}
+                    onChange={(e) => setContactSubtitle(e.target.value)}
+                    placeholder="Have questions? Reach out directly through the options below and I'll get back to you as soon as possible."
+                    className="min-h-[80px] w-full rounded-md border border-input bg-card px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  />
+                </div>
                 <div className="grid gap-2">
                   <Label htmlFor="contact-email">Email</Label>
                   <Input

@@ -14,6 +14,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AlbumView } from './AlbumView.tsx'
 import { Toaster } from 'sonner'
 import NotFound from './NotFound.tsx'
+import License from './License'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -25,6 +26,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/albums" element={<PublicAlbums />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/license" element={<License />} />
         <Route path="/album/:id" element={<AlbumView/>} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/:albumId" element={<AdminDashboard />} />

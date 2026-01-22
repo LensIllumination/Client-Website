@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { db } from "@/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Image as ImageIcon, Settings } from "lucide-react";
+import { ArrowRight, Image as ImageIcon, Settings, Loader2 } from "lucide-react";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -25,6 +25,8 @@ type PricingItem = {
 
 function Home() {
   const [loadingAlbums, setLoadingAlbums] = useState(true);
+  const [loadingHero, setLoadingHero] = useState(true);
+  const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const [albums, setAlbums] = useState<PublicAlbum[]>([]);
   const [heroTitle, setHeroTitle] = useState("My photography, beautifully presented.");
   const [heroSubtitle, setHeroSubtitle] = useState(
@@ -93,6 +95,7 @@ function Home() {
 
   useEffect(() => {
     const fetchHomeSettings = async () => {
+      setLoadingHero(true);
       try {
         const settingsDoc = await getDoc(doc(db, "settings", "home"));
         if (settingsDoc.exists()) {
@@ -104,6 +107,8 @@ function Home() {
         }
       } catch (err) {
         console.error("Failed to load home settings", err);
+      } finally {
+        setLoadingHero(false);
       }
     };
     fetchHomeSettings();
@@ -192,10 +197,16 @@ function Home() {
       {/* Hero Image Section */}
       <div className="mx-auto max-w-7xl px-4 mb-4">
         <div className="relative w-full h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-2xl">
+          {loadingHero || !heroImageLoaded ? (
+            <div className="absolute inset-0 bg-muted flex items-center justify-center animate-fade-in">
+              <Loader2 className="h-16 w-16 animate-spin text-muted-foreground" />
+            </div>
+          ) : null}
           <img
             src={heroImage}
             alt="Hero"
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover transition-all duration-700 ${heroImageLoaded && !loadingHero ? 'opacity-100 animate-fade-in-scale' : 'opacity-0'}`}
+            onLoad={() => setHeroImageLoaded(true)}
           />
           
           {/* Edit Button (Admin Only) */}
@@ -223,7 +234,7 @@ function Home() {
           )}
           
           {/* Overlay with Hero Text */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-6 md:p-8">
+          <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-6 md:p-8 transition-all duration-700 ${heroImageLoaded && !loadingHero ? 'opacity-100 animate-fade-in-up' : 'opacity-0'}`}>
             <div className="text-center mb-4">
               <h1 className="text-3xl md:text-5xl font-bold text-white drop-shadow-lg">
                 {heroTitle}
@@ -324,11 +335,14 @@ function Home() {
           </div>
 
           {loadingAlbums ? (
-            <div className="text-center py-10 text-muted-foreground">Loading public albums…</div>
+            <div className="text-center py-10 flex flex-col items-center animate-fade-in">
+              <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
+              <p className="text-muted-foreground">Loading public albums…</p>
+            </div>
           ) : albums.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground">No public albums yet. Check back soon!</div>
+            <div className="text-center py-10 text-muted-foreground animate-fade-in">No public albums yet. Check back soon!</div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in-up">
               {albums.slice(0, 3).map((album) => (
                 <Card
                   key={album.id}
@@ -350,6 +364,7 @@ function Home() {
                     <Button size="sm" variant="secondary" onClick={(e) => {
                       e.stopPropagation();
                       navigate(`/album/${album.id}`);
+                      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
                     }} className="w-full mt-auto">
                       View Album
                     </Button>
