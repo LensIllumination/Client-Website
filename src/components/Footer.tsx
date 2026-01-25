@@ -1,4 +1,4 @@
-import { Github, Mail, Home, Image as ImageIcon, Phone, Instagram, LogOut } from "lucide-react";
+import { Github, Mail, Home, Image as ImageIcon, Phone, Instagram, LogOut, Copyright } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import { db, auth } from "@/firebase";
@@ -31,21 +31,6 @@ export default function Footer() {
     };
     fetchContactInfo();
   }, []);
-
-  const CopyleftIcon = () => (
-    <svg
-      className="h-4 w-4"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="12" cy="12" r="10" />
-      <path d="M10 8v8M10 16h4" />
-    </svg>
-  );
 
   return (
     <footer className="bg-background border-t border-border mt-16">
@@ -168,13 +153,13 @@ export default function Footer() {
           {/* Footer Bottom */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
             <p className="flex items-center gap-1">
-              <CopyleftIcon />
-              <span>Copyleft 2026 Lens Illumination. Licensed under GPL-3.0-only.</span>
+              <Copyright className="h-4 w-4" />
+              <span>Copyright 2026 Lens Illumination. All rights reserved.</span>
               <a
                 href="/license"
                 className="font-semibold text-foreground hover:underline ml-1 flex items-center gap-1"
               >
-                View license
+                View copyright
               </a>
             </p>
             <p className="flex items-center gap-2">
