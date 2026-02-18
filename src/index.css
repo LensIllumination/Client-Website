@@ -126,11 +126,11 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
-  html, body {
-    @apply overflow-x-hidden;
+  html {
+    @apply overflow-x-hidden m-0 p-0;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground m-0 p-0;
   }
 
   /* Scrollbar Styling */

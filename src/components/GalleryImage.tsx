@@ -31,7 +31,7 @@ function GalleryImage({ src, alt, onClick }: GalleryImageProps) {
   const displaySrc = useFallback ? src.replace("/thumb-", "/") : src;
 
   return (
-    <div className="relative mb-4 break-inside-avoid overflow-hidden rounded-lg shadow-md bg-muted h-full transition-all duration-300 hover:shadow-xl hover:scale-[1.02]">
+    <div className="relative mb-2 break-inside-avoid overflow-hidden rounded shadow-md bg-muted h-full transition-all duration-300 hover:shadow-xl hover:scale-[1.02]">
       {imageError ? (
         <ImageErrorPanel />
       ) : (
@@ -44,7 +44,7 @@ function GalleryImage({ src, alt, onClick }: GalleryImageProps) {
           <img
             src={displaySrc}
             alt={alt}
-            className={`w-full h-full object-cover cursor-pointer rounded-lg transition-all duration-500 ${isLoading ? 'opacity-0' : 'opacity-100 animate-fade-in-scale'}`}
+            className={`w-full h-full object-cover cursor-pointer rounded transition-all duration-500 ${isLoading ? 'opacity-0' : 'opacity-100 animate-fade-in-scale'}`}
             onError={handleImageError}
             onLoad={handleImageLoad}
             onClick={onClick}

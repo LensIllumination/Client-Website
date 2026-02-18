@@ -269,8 +269,8 @@ export function AlbumView() {
   return (
     <main className="min-h-screen pt-2 pb-8 animate-fade-in">
       {/* Hero Image Section with Overlay */}
-      <div className="mx-auto max-w-7xl px-4 mb-4">
-        <div className="relative w-full h-[calc(100vh-120px)] rounded-xl overflow-hidden shadow-2xl bg-muted">
+      <div className="mx-auto max-w-7xl px-4 mb-2">
+        <div className="relative w-full h-[calc(100vh-120px)] rounded-lg overflow-hidden shadow-2xl bg-muted">
           {/* Hero Image */}
           {album.heroImage ? (
             <div 
@@ -285,7 +285,7 @@ export function AlbumView() {
               <img
                 src={album.heroImage.fullSrc}
                 alt={album.heroImage.title}
-                className={`w-full h-full object-cover rounded-xl transition-all duration-700 ${heroImageLoaded ? 'opacity-100 animate-fade-in-scale' : 'opacity-0'}`}
+                className={`w-full h-full object-cover rounded-lg transition-all duration-700 ${heroImageLoaded ? 'opacity-100 animate-fade-in-scale' : 'opacity-0'}`}
                 onClick={() => setFullscreenImage(album.heroImage!)}
                 onLoad={() => setHeroImageLoaded(true)}
               />
@@ -356,7 +356,7 @@ export function AlbumView() {
             return (
               <div
                 key={img.id}
-                className={`cursor-pointer mb-4 break-inside-avoid rounded-lg ${height}`}
+                className={`cursor-pointer mb-2 break-inside-avoid rounded ${height}`}
               >
                 <GalleryImage
                   src={img.src}
