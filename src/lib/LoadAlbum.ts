@@ -7,7 +7,36 @@ export const loadAlbum = async (albumId : string) => {
   const albumSnap = await getDoc(doc(db, "albums", albumId));
   if (!albumSnap.exists()) return null;
 
-  const { name, images: imageRefs, heroImage: heroImageRef } = albumSnap.data();
+  const albumData = albumSnap.data() as any;
+  if (albumData.kind === "folder") return null;
+
+  const { name, images: imageRefs = [], heroImage: heroImageRef, folderId = null, isPublic = true, passwordEnabled = false, passwordHash = null } = albumData;
+
+  let folder: null | {
+    id: string;
+    name: string;
+    isPublic: boolean;
+    passwordEnabled: boolean;
+    passwordHash: string | null;
+    coverAlbumId: string | null;
+  } = null;
+
+  if (folderId) {
+    const folderSnap = await getDoc(doc(db, "albums", folderId));
+    if (folderSnap.exists()) {
+      const folderData = folderSnap.data() as any;
+      if (folderData.kind === "folder") {
+        folder = {
+          id: folderSnap.id,
+          name: folderData.name,
+          isPublic: folderData.isPublic ?? true,
+          passwordEnabled: folderData.passwordEnabled ?? false,
+          passwordHash: folderData.passwordHash ?? null,
+          coverAlbumId: folderData.coverAlbumId ?? null,
+        };
+      }
+    }
+  }
 
   // Debug album: fill with lorem.picsum images
   if (name.toLowerCase() === "debug") {
@@ -19,7 +48,13 @@ export const loadAlbum = async (albumId : string) => {
     }));
 
     return {
+      id: albumId,
       name: "Debug Album",
+      isPublic,
+      passwordEnabled,
+      passwordHash,
+      folderId,
+      folder,
       heroImage: {
         id: "debug-hero",
         title: "Debug Hero",
@@ -51,7 +86,13 @@ export const loadAlbum = async (albumId : string) => {
   }
 
   return {
+    id: albumId,
     name,
+    isPublic,
+    passwordEnabled,
+    passwordHash,
+    folderId,
+    folder,
     heroImage,
     images: imageDocs.map(snap => {
       const data = snap.data() as any;

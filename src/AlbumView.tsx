@@ -10,11 +10,26 @@ import { X, Settings, Download, Share2, Copy, ArrowUp, Loader2, Image as ImageIc
 import JSZip from "jszip";
 import { toast } from "sonner";
 import ImageErrorPanel from "@/components/ImageErrorPanel";
+import AccessGate from "@/components/AccessGate";
+import { hashPassword, readStoredAccessHash, storeAccessHash } from "@/lib/contentAccess";
 
 interface Album {
   name: string;
   heroImage?: { id: string; src: string; fullSrc: string; title: string } | null;
   images: Array<{ id: string; src: string; fullSrc: string; title: string }>;
+  id?: string;
+  isPublic?: boolean;
+  passwordEnabled?: boolean;
+  passwordHash?: string | null;
+  folderId?: string | null;
+  folder?: {
+    id: string;
+    name: string;
+    isPublic: boolean;
+    passwordEnabled: boolean;
+    passwordHash: string | null;
+    coverAlbumId: string | null;
+  } | null;
 }
 
 export function AlbumView() {
@@ -29,6 +44,10 @@ export function AlbumView() {
   const [imageSizes, setImageSizes] = useState<Map<string, string>>(new Map());
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
+  const [password, setPassword] = useState("");
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [isCheckingPassword, setIsCheckingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
   const navigate = useNavigate();
 
   // Generate random height for each image (weighted towards shorter images)
@@ -69,6 +88,18 @@ export function AlbumView() {
 
       if (data) {
         setAlbum(data);
+        const requiredHashes = [
+          data.passwordEnabled && data.passwordHash ? data.passwordHash : null,
+          data.folder?.passwordEnabled && data.folder.passwordHash ? data.folder.passwordHash : null,
+        ].filter(Boolean) as string[];
+        const storedHashes = [
+          readStoredAccessHash("album", albumId),
+          data.folderId ? readStoredAccessHash("folder", data.folderId) : null,
+        ].filter(Boolean) as string[];
+
+        setIsUnlocked(requiredHashes.length === 0 || requiredHashes.some((hash) => storedHashes.includes(hash)));
+        setPasswordError("");
+        setPassword("");
       } else {
         // Album not found, redirect to 404
         navigate("/404", { replace: true });
@@ -93,6 +124,40 @@ export function AlbumView() {
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleUnlockAlbum = async () => {
+    if (!album) return;
+
+    if (!password.trim()) {
+      setPasswordError("Enter a password to continue.");
+      return;
+    }
+
+    setIsCheckingPassword(true);
+    try {
+      const passwordHash = await hashPassword(password);
+      const albumMatches = album.passwordEnabled && album.passwordHash && passwordHash === album.passwordHash;
+      const folderMatches = album.folder?.passwordEnabled && album.folder.passwordHash && passwordHash === album.folder.passwordHash;
+
+      if (albumMatches || folderMatches) {
+        if (albumMatches && albumId) {
+          storeAccessHash("album", albumId, passwordHash);
+        }
+        if (folderMatches && album.folderId) {
+          storeAccessHash("folder", album.folderId, passwordHash);
+        }
+
+        setIsUnlocked(true);
+        setPasswordError("");
+        setPassword("");
+        return;
+      }
+
+      setPasswordError("Incorrect password.");
+    } finally {
+      setIsCheckingPassword(false);
+    }
   };
 
   const handleShareAlbum = async () => {
@@ -266,6 +331,20 @@ export function AlbumView() {
     </div>
   );
 
+  if (!isUnlocked) {
+    return (
+      <AccessGate
+        title={album.folder?.name ? `${album.folder.name} / ${album.name}` : album.name}
+        description="Enter the password to view this album."
+        password={password}
+        onPasswordChange={setPassword}
+        onSubmit={handleUnlockAlbum}
+        submitting={isCheckingPassword}
+        error={passwordError}
+      />
+    );
+  }
+
   return (
     <main className="min-h-screen pt-2 pb-8 animate-fade-in">
       {/* Hero Image Section with Overlay */}
@@ -301,6 +380,9 @@ export function AlbumView() {
             <div className="text-center mb-4">
               <h1 className="text-3xl md:text-5xl font-bold text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">{album.name}</h1>
               <p className="mt-2 text-white/90 text-lg drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">{album.images.length} Photos</p>
+              {album.folder && (
+                <p className="mt-1 text-white/75 text-sm drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">Folder: {album.folder.name}</p>
+              )}
             </div>
             
             <div className="flex justify-center gap-2 flex-wrap pointer-events-auto">

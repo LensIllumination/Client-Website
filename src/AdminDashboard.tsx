@@ -13,11 +13,15 @@ import {
   arrayUnion,
   getDoc,
   setDoc,
+  writeBatch,
+  query,
+  where,
 } from "firebase/firestore";
 import { toast } from "sonner";
 import { useNavigate, useParams } from "react-router-dom";
 import { QRCodeSVG } from "qrcode.react";
 import { loadAlbum } from "@/lib/LoadAlbum";
+import { hashPassword } from "@/lib/contentAccess";
 
 // shadcn components
 import { Button } from "@/components/ui/button";
@@ -42,6 +46,7 @@ import {
   Share2,
   QrCode,
   X,
+  FolderOpen,
    Download,
   Copy,
 } from "lucide-react";
@@ -84,6 +89,20 @@ interface Album {
   createdAt?: any;
   isPublic?: boolean;
   heroImage?: any;
+  folderId?: string | null;
+  passwordEnabled?: boolean;
+  passwordHash?: string | null;
+}
+
+interface FolderItem {
+  id: string;
+  name: string;
+  createdAt?: any;
+  isPublic?: boolean;
+  passwordEnabled?: boolean;
+  passwordHash?: string | null;
+  coverAlbumId?: string | null;
+  albumCount?: number;
 }
 
 interface ImageItem {
@@ -231,12 +250,16 @@ export default function AdminDashboard() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [albums, setAlbums] = useState<Album[]>([]);
+  const [folders, setFolders] = useState<FolderItem[]>([]);
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   const [albumImages, setAlbumImages] = useState<ImageItem[]>([]);
   const [loadingImages, setLoadingImages] = useState(false);
   const [isCreatingAlbum, setIsCreatingAlbum] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState("");
   const [newAlbumPublic, setNewAlbumPublic] = useState(true);
+  const [newAlbumFolderId, setNewAlbumFolderId] = useState<string>("");
+  const [newAlbumPasswordEnabled, setNewAlbumPasswordEnabled] = useState(false);
+  const [newAlbumPassword, setNewAlbumPassword] = useState("");
   const [isRenaming, setIsRenaming] = useState<string | null>(null);
 
   useEffect(() => {
@@ -285,6 +308,20 @@ export default function AdminDashboard() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   // Create album modal state
   const [createAlbumOpen, setCreateAlbumOpen] = useState(false);
+  const [albumAccessFolderId, setAlbumAccessFolderId] = useState<string>("");
+  const [albumAccessPublic, setAlbumAccessPublic] = useState(true);
+  const [albumAccessPasswordEnabled, setAlbumAccessPasswordEnabled] = useState(false);
+  const [albumAccessPassword, setAlbumAccessPassword] = useState("");
+  const [isSavingAlbumAccess, setIsSavingAlbumAccess] = useState(false);
+
+  const [createFolderOpen, setCreateFolderOpen] = useState(false);
+  const [isSavingFolder, setIsSavingFolder] = useState(false);
+  const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
+  const [folderName, setFolderName] = useState("");
+  const [folderPublic, setFolderPublic] = useState(true);
+  const [folderPasswordEnabled, setFolderPasswordEnabled] = useState(false);
+  const [folderPassword, setFolderPassword] = useState("");
+  const [folderCoverAlbumId, setFolderCoverAlbumId] = useState("");
   
   const saveHomeHeader = async () => {
     setSavingHomeHeader(true);
@@ -594,22 +631,55 @@ export default function AdminDashboard() {
     }
   }, [selectedAlbum?.id]);
 
+  useEffect(() => {
+    if (!selectedAlbum) return;
+
+    setAlbumAccessFolderId(selectedAlbum.folderId || "");
+    setAlbumAccessPublic(selectedAlbum.isPublic ?? true);
+    setAlbumAccessPasswordEnabled(!!selectedAlbum.passwordEnabled);
+    setAlbumAccessPassword("");
+  }, [selectedAlbum?.id]);
+
   const loadAlbums = async () => {
     try {
-      const albumsRef = collection(db, "albums");
-      const snapshot = await getDocs(albumsRef);
+      const albumsSnapshot = await getDocs(collection(db, "albums"));
+
       const albumsList: Album[] = [];
-      snapshot.forEach((doc) => {
+      const foldersList: FolderItem[] = [];
+
+      const albumDocs = albumsSnapshot.docs.filter((snapshot) => (snapshot.data() as any).kind !== "folder");
+      const folderDocs = albumsSnapshot.docs.filter((snapshot) => (snapshot.data() as any).kind === "folder");
+
+      albumDocs.forEach((snapshot) => {
         albumsList.push({
-          id: doc.id,
-          name: doc.data().name,
-          images: doc.data().images || [],
-          createdAt: doc.data().createdAt,
-          isPublic: doc.data().isPublic ?? true,
-          heroImage: doc.data().heroImage,
+          id: snapshot.id,
+          name: snapshot.data().name,
+          images: snapshot.data().images || [],
+          createdAt: snapshot.data().createdAt,
+          isPublic: snapshot.data().isPublic ?? true,
+          heroImage: snapshot.data().heroImage,
+          folderId: snapshot.data().folderId ?? null,
+          passwordEnabled: snapshot.data().passwordEnabled ?? false,
+          passwordHash: snapshot.data().passwordHash ?? null,
         });
       });
+
+      folderDocs.forEach((snapshot) => {
+        const data = snapshot.data() as any;
+        foldersList.push({
+          id: snapshot.id,
+          name: data.name,
+          createdAt: data.createdAt,
+          isPublic: data.isPublic ?? true,
+          passwordEnabled: data.passwordEnabled ?? false,
+          passwordHash: data.passwordHash ?? null,
+          coverAlbumId: data.coverAlbumId ?? null,
+          albumCount: albumDocs.filter((albumDoc) => (albumDoc.data() as any).folderId === snapshot.id).length,
+        });
+      });
+
       const norm = (d: any) => (d?.toMillis ? d.toMillis() : d?.seconds ? d.seconds * 1000 : d || 0);
+      setFolders(foldersList.sort((a, b) => norm(b.createdAt) - norm(a.createdAt)));
       setAlbums(albumsList.sort((a, b) => norm(b.createdAt) - norm(a.createdAt)));
     } catch (error: any) {
       console.error("Load albums error:", error);
@@ -683,16 +753,29 @@ export default function AdminDashboard() {
       return;
     }
 
+    if (newAlbumPasswordEnabled && !newAlbumPassword.trim()) {
+      toast.error("Enter a password for the album");
+      return;
+    }
+
     setIsCreatingAlbum(true);
     try {
+      const passwordHash = newAlbumPasswordEnabled ? await hashPassword(newAlbumPassword) : null;
       await addDoc(collection(db, "albums"), {
+        kind: "album",
         name: newAlbumName,
         images: [],
         createdAt: new Date(),
         isPublic: newAlbumPublic,
+        folderId: newAlbumFolderId || null,
+        passwordEnabled: newAlbumPasswordEnabled,
+        passwordHash,
       });
       setNewAlbumName("");
       setNewAlbumPublic(true);
+      setNewAlbumFolderId("");
+      setNewAlbumPasswordEnabled(false);
+      setNewAlbumPassword("");
       setCreateAlbumOpen(false);
       loadAlbums();
       toast.success(`Album "${newAlbumName}" created!`);
@@ -701,6 +784,128 @@ export default function AdminDashboard() {
       toast.error("Please try again later");
     } finally {
       setIsCreatingAlbum(false);
+    }
+  };
+
+  const handleSaveAlbumAccess = async () => {
+    if (!selectedAlbum) return;
+    if (albumAccessPasswordEnabled && !albumAccessPassword.trim() && !selectedAlbum.passwordHash) {
+      toast.error("Enter a password for the album");
+      return;
+    }
+
+    setIsSavingAlbumAccess(true);
+    try {
+      const passwordHash = albumAccessPasswordEnabled
+        ? (albumAccessPassword.trim() ? await hashPassword(albumAccessPassword) : selectedAlbum.passwordHash || null)
+        : null;
+
+      await updateDoc(doc(db, "albums", selectedAlbum.id), {
+        folderId: albumAccessFolderId || null,
+        isPublic: albumAccessPublic,
+        passwordEnabled: albumAccessPasswordEnabled,
+        passwordHash,
+      });
+
+      await loadAlbums();
+      const refreshed = albums.find((album) => album.id === selectedAlbum.id);
+      setSelectedAlbum(refreshed ? { ...refreshed } : selectedAlbum);
+      toast.success("Album access updated");
+    } catch (error) {
+      console.error("Save album access error:", error);
+      toast.error("Please try again later");
+    } finally {
+      setIsSavingAlbumAccess(false);
+    }
+  };
+
+  const openCreateFolderDialog = () => {
+    setEditingFolderId(null);
+    setFolderName("");
+    setFolderPublic(true);
+    setFolderPasswordEnabled(false);
+    setFolderPassword("");
+    setFolderCoverAlbumId("");
+    setCreateFolderOpen(true);
+  };
+
+  const openEditFolderDialog = (folder: FolderItem) => {
+    setEditingFolderId(folder.id);
+    setFolderName(folder.name);
+    setFolderPublic(folder.isPublic ?? true);
+    setFolderPasswordEnabled(!!folder.passwordEnabled);
+    setFolderPassword("");
+    setFolderCoverAlbumId(folder.coverAlbumId || "");
+    setCreateFolderOpen(true);
+  };
+
+  const handleSaveFolder = async () => {
+    if (!folderName.trim()) {
+      toast.error("Folder name is required");
+      return;
+    }
+
+    if (folderPasswordEnabled && !folderPassword.trim() && !editingFolderId) {
+      toast.error("Enter a password for the folder");
+      return;
+    }
+
+    setIsSavingFolder(true);
+    try {
+      const passwordHash = folderPasswordEnabled
+        ? (folderPassword.trim() ? await hashPassword(folderPassword) : folders.find((folder) => folder.id === editingFolderId)?.passwordHash || null)
+        : null;
+
+      const payload = {
+        kind: "folder",
+        name: folderName,
+        createdAt: editingFolderId ? folders.find((folder) => folder.id === editingFolderId)?.createdAt || new Date() : new Date(),
+        isPublic: folderPublic,
+        passwordEnabled: folderPasswordEnabled,
+        passwordHash,
+        coverAlbumId: folderCoverAlbumId || null,
+      };
+
+      if (editingFolderId) {
+        await updateDoc(doc(db, "albums", editingFolderId), payload);
+      } else {
+        await addDoc(collection(db, "albums"), payload);
+      }
+
+      setCreateFolderOpen(false);
+      setEditingFolderId(null);
+      setFolderName("");
+      setFolderPublic(true);
+      setFolderPasswordEnabled(false);
+      setFolderPassword("");
+      setFolderCoverAlbumId("");
+      await loadAlbums();
+      toast.success(`Folder ${editingFolderId ? "updated" : "created"}`);
+    } catch (error) {
+      console.error("Save folder error:", error);
+      toast.error("Please try again later");
+    } finally {
+      setIsSavingFolder(false);
+    }
+  };
+
+  const handleDeleteFolder = async (folderId: string) => {
+    try {
+      const batch = writeBatch(db);
+      const childSnap = await getDocs(query(collection(db, "albums"), where("folderId", "==", folderId)));
+      childSnap.docs.forEach((albumDoc) => {
+        batch.update(albumDoc.ref, { folderId: null });
+      });
+      batch.delete(doc(db, "albums", folderId));
+      await batch.commit();
+      await loadAlbums();
+      if (selectedAlbum?.folderId === folderId) {
+        setSelectedAlbum((prev) => (prev ? { ...prev, folderId: null } : prev));
+      }
+      toast.success("Folder deleted");
+    } catch (error) {
+      console.error("Delete folder error:", error);
+      toast.error("Please try again later");
     }
   };
 
@@ -732,6 +937,7 @@ export default function AdminDashboard() {
     try {
       await updateDoc(doc(db, "albums", album.id), { isPublic: nextPublic });
       setSelectedAlbum((prev) => (prev && prev.id === album.id ? { ...prev, isPublic: nextPublic } : prev));
+      setAlbumAccessPublic(nextPublic);
       setAlbums((prev) => prev.map((a) => (a.id === album.id ? { ...a, isPublic: nextPublic } : a)));
       toast.success(`Album set to ${nextPublic ? "Public" : "Private"}`);
     } catch (error: any) {
@@ -867,6 +1073,9 @@ export default function AdminDashboard() {
           images: albumData.images || [],
           createdAt: albumData.createdAt,
           isPublic: albumData.isPublic,
+          folderId: albumData.folderId ?? null,
+          passwordEnabled: albumData.passwordEnabled ?? false,
+          passwordHash: albumData.passwordHash ?? null,
         });
         
         // Directly load the images from the updated album
@@ -1245,6 +1454,9 @@ export default function AdminDashboard() {
           images: albumData.images || [],
           createdAt: albumData.createdAt,
           isPublic: albumData.isPublic,
+          folderId: albumData.folderId ?? null,
+          passwordEnabled: albumData.passwordEnabled ?? false,
+          passwordHash: albumData.passwordHash ?? null,
         });
         
         // Directly load the images from the updated album
@@ -1281,6 +1493,9 @@ export default function AdminDashboard() {
           images: albumData.images || [],
           createdAt: albumData.createdAt,
           isPublic: albumData.isPublic,
+          folderId: albumData.folderId ?? null,
+          passwordEnabled: albumData.passwordEnabled ?? false,
+          passwordHash: albumData.passwordHash ?? null,
         });
         
         // Directly load the images from the updated album
@@ -1352,67 +1567,216 @@ export default function AdminDashboard() {
             <Card className="h-[calc(100vh-200px)] flex flex-col">
               <CardHeader className="flex items-center justify-between gap-2">
                 <CardTitle className="text-xl">Albums</CardTitle>
-                <Dialog open={createAlbumOpen} onOpenChange={setCreateAlbumOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" className="gap-2" disabled={isCreatingAlbum}>
-                      <Plus className="h-4 w-4" />
-                      New Album
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-[480px]">
-                    <DialogHeader>
-                      <DialogTitle>Create Album</DialogTitle>
-                      <DialogDescription>
-                        Create a new album to organize your images.
-                      </DialogDescription>
-                    </DialogHeader>
+                <div className="flex gap-2 flex-wrap justify-end">
+                  <Dialog open={createAlbumOpen} onOpenChange={setCreateAlbumOpen}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" className="gap-2" disabled={isCreatingAlbum}>
+                        <Plus className="h-4 w-4" />
+                        New Album
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[520px]">
+                      <DialogHeader>
+                        <DialogTitle>Create Album</DialogTitle>
+                        <DialogDescription>
+                          Create a new album to organize your images.
+                        </DialogDescription>
+                      </DialogHeader>
 
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="newAlbum">Album name</Label>
-                        <Input
-                          id="newAlbum"
-                          placeholder="Album name"
-                          value={newAlbumName}
-                          onChange={(e) => setNewAlbumName(e.target.value)}
-                          disabled={isCreatingAlbum}
-                        />
-                      </div>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="newAlbum">Album name</Label>
+                          <Input
+                            id="newAlbum"
+                            placeholder="Album name"
+                            value={newAlbumName}
+                            onChange={(e) => setNewAlbumName(e.target.value)}
+                            disabled={isCreatingAlbum}
+                          />
+                        </div>
 
-                      <div className="flex items-center gap-3">
-                        <Switch
-                          checked={newAlbumPublic}
-                          onCheckedChange={setNewAlbumPublic}
-                          disabled={isCreatingAlbum}
-                          ariaLabel="Toggle public album"
-                        />
-                        <div className="space-y-0">
-                          <p className="text-sm font-medium">Public album</p>
-                          <p className="text-xs text-muted-foreground">Visible to anyone with the link.</p>
+                        <div className="space-y-2">
+                          <Label htmlFor="newAlbumFolder">Folder</Label>
+                          <select
+                            id="newAlbumFolder"
+                            value={newAlbumFolderId}
+                            onChange={(e) => setNewAlbumFolderId(e.target.value)}
+                            disabled={isCreatingAlbum}
+                            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                          >
+                            <option value="">No folder</option>
+                            {folders.map((folder) => (
+                              <option key={folder.id} value={folder.id}>
+                                {folder.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <Switch
+                            checked={newAlbumPublic}
+                            onCheckedChange={setNewAlbumPublic}
+                            disabled={isCreatingAlbum}
+                            ariaLabel="Toggle public album"
+                          />
+                          <div className="space-y-0">
+                            <p className="text-sm font-medium">Public album</p>
+                            <p className="text-xs text-muted-foreground">Visible to anyone with the link.</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <Switch
+                            checked={newAlbumPasswordEnabled}
+                            onCheckedChange={setNewAlbumPasswordEnabled}
+                            disabled={isCreatingAlbum}
+                            ariaLabel="Toggle album password"
+                          />
+                          <div className="space-y-0">
+                            <p className="text-sm font-medium">Password protect</p>
+                            <p className="text-xs text-muted-foreground">Require a password to open this album.</p>
+                          </div>
+                        </div>
+
+                        {newAlbumPasswordEnabled && (
+                          <div className="space-y-2">
+                            <Label htmlFor="newAlbumPassword">Album password</Label>
+                            <Input
+                              id="newAlbumPassword"
+                              type="password"
+                              placeholder="Set a password"
+                              value={newAlbumPassword}
+                              onChange={(e) => setNewAlbumPassword(e.target.value)}
+                              disabled={isCreatingAlbum}
+                            />
+                          </div>
+                        )}
+
+                        <div className="flex justify-end gap-2 pt-2">
+                          <Button
+                            variant="outline"
+                            onClick={() => setCreateAlbumOpen(false)}
+                            disabled={isCreatingAlbum}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            onClick={handleCreateAlbum}
+                            disabled={isCreatingAlbum || !newAlbumName.trim()}
+                            className="gap-2"
+                          >
+                            {isCreatingAlbum && <Loader2 className="h-4 w-4 animate-spin" />}
+                            Create
+                          </Button>
                         </div>
                       </div>
+                    </DialogContent>
+                  </Dialog>
 
-                      <div className="flex justify-end gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => setCreateAlbumOpen(false)}
-                          disabled={isCreatingAlbum}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          onClick={handleCreateAlbum}
-                          disabled={isCreatingAlbum || !newAlbumName.trim()}
-                          className="gap-2"
-                        >
-                          {isCreatingAlbum && <Loader2 className="h-4 w-4 animate-spin" />}
-                          Create
-                        </Button>
+                  <Button size="sm" variant="outline" className="gap-2" onClick={openCreateFolderDialog}>
+                    <FolderOpen className="h-4 w-4" />
+                    New Folder
+                  </Button>
+                </div>
+              </CardHeader>
+
+              <Dialog open={createFolderOpen} onOpenChange={setCreateFolderOpen}>
+                <DialogContent className="sm:max-w-[520px]">
+                  <DialogHeader>
+                    <DialogTitle>{editingFolderId ? "Edit Folder" : "Create Folder"}</DialogTitle>
+                    <DialogDescription>
+                      Add a folder to group related albums, set a cover, and optionally protect it with a password.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="folderName">Folder name</Label>
+                      <Input
+                        id="folderName"
+                        placeholder="Folder name"
+                        value={folderName}
+                        onChange={(e) => setFolderName(e.target.value)}
+                        disabled={isSavingFolder}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="folderCover">Cover album</Label>
+                      <select
+                        id="folderCover"
+                        value={folderCoverAlbumId}
+                        onChange={(e) => setFolderCoverAlbumId(e.target.value)}
+                        disabled={isSavingFolder}
+                        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="">No cover</option>
+                        {albums.map((album) => (
+                          <option key={album.id} value={album.id}>
+                            {album.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={folderPublic}
+                        onCheckedChange={setFolderPublic}
+                        disabled={isSavingFolder}
+                        ariaLabel="Toggle public folder"
+                      />
+                      <div>
+                        <p className="text-sm font-medium">Public folder</p>
+                        <p className="text-xs text-muted-foreground">Visible on the public albums page.</p>
                       </div>
                     </div>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
+
+                    <div className="flex items-center gap-3">
+                      <Switch
+                        checked={folderPasswordEnabled}
+                        onCheckedChange={setFolderPasswordEnabled}
+                        disabled={isSavingFolder}
+                        ariaLabel="Toggle folder password"
+                      />
+                      <div>
+                        <p className="text-sm font-medium">Password protect</p>
+                        <p className="text-xs text-muted-foreground">Require a password to open the folder.</p>
+                      </div>
+                    </div>
+
+                    {folderPasswordEnabled && (
+                      <div className="space-y-2">
+                        <Label htmlFor="folderPassword">Folder password</Label>
+                        <Input
+                          id="folderPassword"
+                          type="password"
+                          placeholder={editingFolderId ? "Leave blank to keep current password" : "Set a password"}
+                          value={folderPassword}
+                          onChange={(e) => setFolderPassword(e.target.value)}
+                          disabled={isSavingFolder}
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => setCreateFolderOpen(false)}
+                        disabled={isSavingFolder}
+                      >
+                        Cancel
+                      </Button>
+                      <Button onClick={handleSaveFolder} disabled={isSavingFolder || !folderName.trim()} className="gap-2">
+                        {isSavingFolder && <Loader2 className="h-4 w-4 animate-spin" />}
+                        {editingFolderId ? "Save Changes" : "Create"}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
               <CardContent className="space-y-3 flex-1 flex flex-col overflow-hidden">
                 {/* Albums List */}
                 <div className="space-y-2 overflow-y-auto flex-1">
@@ -1435,6 +1799,11 @@ export default function AdminDashboard() {
                           <p className="font-medium truncate text-sm">{album.name}</p>
                           <p className="text-xs opacity-75 flex items-center gap-2">
                             <span>{album.images?.length || 0} images</span>
+                            {album.folderId && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-sky-100 text-sky-700">
+                                Folder
+                              </span>
+                            )}
                             <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold ${album.isPublic ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
                               {album.isPublic ? "Public" : "Private"}
                             </span>
@@ -1445,6 +1814,42 @@ export default function AdminDashboard() {
                     ))
                   )}
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card className="mt-6">
+              <CardHeader className="flex items-center justify-between gap-2">
+                <CardTitle className="text-xl">Folders</CardTitle>
+                <Button size="sm" variant="outline" className="gap-2" onClick={openCreateFolderDialog}>
+                  <FolderOpen className="h-4 w-4" />
+                  New Folder
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-2 max-h-72 overflow-y-auto">
+                {folders.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-4 text-center">No folders yet</p>
+                ) : (
+                  folders.map((folder) => (
+                    <div key={folder.id} className="p-3 rounded-lg border bg-muted/20 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium truncate text-sm">{folder.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {folder.albumCount || 0} album(s) • {folder.isPublic ? "Public" : "Private"}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0">
+                          <Button size="sm" variant="outline" onClick={() => openEditFolderDialog(folder)}>
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => handleDeleteFolder(folder.id)}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
           </div>
@@ -1550,6 +1955,68 @@ export default function AdminDashboard() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6 overflow-y-auto flex-1">
+                  <div className="rounded-lg border bg-muted/20 p-4 space-y-4">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div>
+                        <h3 className="font-semibold">Album Access</h3>
+                        <p className="text-sm text-muted-foreground">Assign the album to a folder and control password access.</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveAlbumAccess}
+                        disabled={isSavingAlbumAccess}
+                        className="gap-2"
+                      >
+                        {isSavingAlbumAccess && <Loader2 className="h-4 w-4 animate-spin" />}
+                        Save Access
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="albumFolderSelect">Folder</Label>
+                        <select
+                          id="albumFolderSelect"
+                          value={albumAccessFolderId}
+                          onChange={(e) => setAlbumAccessFolderId(e.target.value)}
+                          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        >
+                          <option value="">No folder</option>
+                          {folders.map((folder) => (
+                            <option key={folder.id} value={folder.id}>
+                              {folder.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-3 pt-7 md:pt-8">
+                        <Switch
+                          checked={albumAccessPasswordEnabled}
+                          onCheckedChange={setAlbumAccessPasswordEnabled}
+                          ariaLabel="Toggle album password"
+                        />
+                        <div>
+                          <p className="text-sm font-medium">Password protect album</p>
+                          <p className="text-xs text-muted-foreground">Leave blank to keep the current password when editing.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {albumAccessPasswordEnabled && (
+                      <div className="space-y-2 max-w-md">
+                        <Label htmlFor="albumPassword">Album password</Label>
+                        <Input
+                          id="albumPassword"
+                          type="password"
+                          placeholder={selectedAlbum?.passwordHash ? "Leave blank to keep current password" : "Set a password"}
+                          value={albumAccessPassword}
+                          onChange={(e) => setAlbumAccessPassword(e.target.value)}
+                        />
+                      </div>
+                    )}
+                  </div>
+
                   {/* Sticky Header - Upload & Bulk Actions */}
                   {albumImages.length > 0 && (
                     <div className="sticky top-0 z-10 p-2 mb-4 flex items-center justify-between gap-2">

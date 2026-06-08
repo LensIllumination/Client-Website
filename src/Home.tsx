@@ -2,10 +2,9 @@ import { useEffect, useMemo, useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { db } from "@/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, getDoc, doc } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, Image as ImageIcon, Settings, Loader2 } from "lucide-react";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { ArrowRight, Image as ImageIcon, Settings, Loader2, FolderOpen } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 type PublicAlbum = {
@@ -14,6 +13,14 @@ type PublicAlbum = {
   imagesCount: number;
   createdAt?: any;
   heroImageUrl?: string;
+};
+
+type PublicFolder = {
+  id: string;
+  name: string;
+  createdAt?: any;
+  coverImageUrl?: string;
+  albumCount: number;
 };
 
 type PricingItem = {
@@ -28,6 +35,7 @@ function Home() {
   const [loadingHero, setLoadingHero] = useState(true);
   const [heroImageLoaded, setHeroImageLoaded] = useState(false);
   const [albums, setAlbums] = useState<PublicAlbum[]>([]);
+  const [folders, setFolders] = useState<PublicFolder[]>([]);
   const [heroTitle, setHeroTitle] = useState("My photography, beautifully presented.");
   const [heroSubtitle, setHeroSubtitle] = useState(
     "Welcome to my photography portfolio. Explore my latest work, browse albums, and get in touch to discuss your project."
@@ -51,12 +59,48 @@ function Home() {
   useEffect(() => {
     const fetchPublicAlbums = async () => {
       try {
-        const q = query(collection(db, "albums"), where("isPublic", "==", true));
-        const snap = await getDocs(q);
+        const snap = await getDocs(collection(db, "albums"));
+        const PROXY_URL = "https://b2-proxy.lensillumination.workers.dev";
+        const folderDocs = snap.docs.filter((albumDoc) => (albumDoc.data() as any).kind === "folder" && albumDoc.data().isPublic !== false);
+        const albumDocs = snap.docs.filter((albumDoc) => (albumDoc.data() as any).kind !== "folder" && albumDoc.data().isPublic !== false);
+
+        const folderList: PublicFolder[] = [];
+        for (const folderDoc of folderDocs) {
+          const data = folderDoc.data() as any;
+          let coverImageUrl: string | undefined;
+
+          if (data.coverAlbumId) {
+            try {
+              const coverAlbumSnap = await getDoc(doc(db, "albums", data.coverAlbumId));
+              if (coverAlbumSnap.exists()) {
+                const coverAlbumData = coverAlbumSnap.data() as any;
+                if (coverAlbumData.heroImage) {
+                  const heroDoc = await getDoc(coverAlbumData.heroImage);
+                  if (heroDoc.exists()) {
+                    const heroData = heroDoc.data() as any;
+                    coverImageUrl = `${PROXY_URL}/${heroData["thumbnail-name"] || heroData["file-name"]}`;
+                  }
+                }
+              }
+            } catch (err) {
+              console.error("Failed to load folder cover", err);
+            }
+          }
+
+          const albumCount = albumDocs.filter((albumDoc) => (albumDoc.data() as any).folderId === folderDoc.id).length;
+
+          folderList.push({
+            id: folderDoc.id,
+            name: data.name,
+            createdAt: data.createdAt,
+            coverImageUrl,
+            albumCount,
+          });
+        }
+
         const list: PublicAlbum[] = [];
-        
-        for (const doc of snap.docs) {
-          const data = doc.data();
+        for (const docSnap of albumDocs) {
+          const data = docSnap.data();
           let heroImageUrl: string | undefined;
           
           if (data.heroImage) {
@@ -73,7 +117,7 @@ function Home() {
           }
           
           list.push({
-            id: doc.id,
+            id: docSnap.id,
             name: data.name,
             imagesCount: (data.images || []).length,
             createdAt: data.createdAt,
@@ -83,6 +127,8 @@ function Home() {
         
         const norm = (d: any) => (d?.toMillis ? d.toMillis() : d?.seconds ? d.seconds * 1000 : d || 0);
         list.sort((a, b) => norm(b.createdAt) - norm(a.createdAt));
+        folderList.sort((a, b) => norm(b.createdAt) - norm(a.createdAt));
+        setFolders(folderList);
         setAlbums(list);
       } catch (err) {
         console.error("Failed to load public albums", err);
@@ -339,10 +385,38 @@ function Home() {
               <Loader2 className="h-12 w-12 animate-spin text-muted-foreground mb-4" />
               <p className="text-muted-foreground">Loading public albums…</p>
             </div>
-          ) : albums.length === 0 ? (
+          ) : albums.length === 0 && folders.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground animate-fade-in">No public albums yet. Check back soon!</div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 animate-fade-in-up">
+              {folders.slice(0, 3).map((folder) => (
+                <Card
+                  key={folder.id}
+                  className="cursor-pointer hover:shadow-xl transition-all duration-300 hover:scale-[1.02] overflow-hidden flex flex-col"
+                  onClick={() => navigate(`/folder/${folder.id}`)}
+                >
+                  <div className="aspect-video bg-muted flex items-center justify-center overflow-hidden">
+                    {folder.coverImageUrl ? (
+                      <img src={folder.coverImageUrl} alt={folder.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <FolderOpen className="h-10 w-10 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="p-4 flex flex-col gap-3 flex-1">
+                    <div>
+                      <p className="font-semibold truncate">{folder.name}</p>
+                      <p className="text-sm text-muted-foreground">{folder.albumCount} album(s)</p>
+                    </div>
+                    <Button size="sm" variant="secondary" onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/folder/${folder.id}`);
+                      setTimeout(() => window.scrollTo({ top: 0, behavior: 'smooth' }), 100);
+                    }} className="w-full mt-auto">
+                      View Folder
+                    </Button>
+                  </div>
+                </Card>
+              ))}
               {albums.slice(0, 3).map((album) => (
                 <Card
                   key={album.id}

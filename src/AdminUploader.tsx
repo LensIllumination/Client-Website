@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { auth, db } from "@/firebase";
-import { collection, addDoc, doc, updateDoc, arrayUnion } from "firebase/firestore";
+import { collection, addDoc, doc, updateDoc, arrayUnion, getDoc } from "firebase/firestore";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import type { User } from "firebase/auth";
 import { toast } from "sonner";
@@ -124,6 +124,10 @@ export default function AdminUploader() {
 
         // 5. Update the Album's array of image references
         const albumRef = doc(db, "albums", albumId);
+        const albumSnap = await getDoc(albumRef);
+        if (!albumSnap.exists() || (albumSnap.data() as any).kind === "folder") {
+          throw new Error("Target is not an album");
+        }
         await updateDoc(albumRef, {
           images: arrayUnion(imgRef),
         });

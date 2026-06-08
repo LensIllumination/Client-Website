@@ -24,7 +24,7 @@ export default function NotFound() {
           <div className="space-y-3">
             <h1 className="text-4xl font-bold tracking-tight">Page Not Found</h1>
             <p className="text-lg text-muted-foreground max-w-md mx-auto">
-              The page or album you're looking for doesn't exist or may have been moved.
+              The page, album, or folder you're looking for doesn't exist or may have been moved.
             </p>
           </div>
 

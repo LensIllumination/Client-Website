@@ -12,6 +12,7 @@ import AdminDashboard from './AdminDashboard.tsx'
 import AdminSignIn from './AdminSignIn.tsx'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { AlbumView } from './AlbumView.tsx'
+import FolderView from './FolderView.tsx'
 import { Toaster } from 'sonner'
 import NotFound from './NotFound.tsx'
 import License from './License'
@@ -28,6 +29,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/contact" element={<Contact />} />
         <Route path="/license" element={<License />} />
         <Route path="/album/:id" element={<AlbumView/>} />
+        <Route path="/folder/:id" element={<FolderView />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/admin/:albumId" element={<AdminDashboard />} />
         <Route path="/admin/signin" element={<AdminSignIn />} />
